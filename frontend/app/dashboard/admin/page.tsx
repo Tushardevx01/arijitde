@@ -342,7 +342,7 @@ export default function AdminDashboard() {
     danger: false,
   });
 
-  const backendUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+  const backendUrl = process.env.NEXT_PUBLIC_API_URL || '';
 
   // 1. Auth Guard and token initialisation
   useEffect(() => {
