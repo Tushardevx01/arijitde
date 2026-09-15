@@ -49,7 +49,7 @@ const PORT = process.env.PORT || 5000;
 // ─── Security Middlewares ───────────────────────────────────────────────────
 app.use(helmet());
 
-// F13: CORS — require FRONTEND_URL in production, fallback only in dev
+// F13: CORS — allow configured FRONTEND_URL, Vercel deployments (*.vercel.app), and local dev
 const allowedOrigins = process.env.FRONTEND_URL
   ? process.env.FRONTEND_URL.split(',').map((o) => o.trim().replace(/\/$/, ''))
   : ['http://localhost:3000', 'http://localhost:3001', 'http://localhost:3002'];
@@ -57,19 +57,23 @@ const allowedOrigins = process.env.FRONTEND_URL
 app.use(
   cors({
     origin: (origin, callback) => {
-      // Allow requests with no origin in development (Postman, curl).
-      // In production, require an explicit origin.
+      // Allow requests with no origin (e.g. server-side Next.js rewrites, mobile apps, Postman)
       if (!origin) {
-        if (process.env.NODE_ENV === 'production') {
-          return callback(null, false);
-        }
         return callback(null, true);
       }
 
       const normalizedOrigin = origin.trim().replace(/\/$/, '');
-      const isAllowed = allowedOrigins.some(
-        (allowed) => allowed.replace(/\/$/, '') === normalizedOrigin,
-      );
+      let isVercel = false;
+      try {
+        const hostname = new URL(origin).hostname;
+        isVercel = hostname === 'vercel.app' || hostname.endsWith('.vercel.app');
+      } catch {}
+
+      const isAllowed =
+        isVercel ||
+        allowedOrigins.some(
+          (allowed) => allowed.replace(/\/$/, '') === normalizedOrigin,
+        );
 
       if (isAllowed) {
         callback(null, true);
@@ -102,7 +106,15 @@ const globalLimiter = rateLimit({
 app.use(globalLimiter);
 
 // Trigger reload to pick up new Prisma Client schema fields
-// ─── Routes ─────────────────────────────────────────────────────────────────
+// Root info route
+app.get('/', (req, res) => {
+  res.json({
+    success: true,
+    message: 'Arijit De API Server is running',
+    health: '/api/health',
+  });
+});
+
 app.get('/api/health', (req, res) => {
   res.json({
     success: true,
