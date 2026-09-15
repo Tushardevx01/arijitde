@@ -1,5 +1,10 @@
+import path from 'path';
 import dotenv from 'dotenv';
+
 dotenv.config();
+if (!process.env.JWT_SECRET) {
+  dotenv.config({ path: path.resolve(__dirname, '../../.env') });
+}
 
 import { prisma } from './lib/prisma';
 import { signToken } from './lib/jwt';

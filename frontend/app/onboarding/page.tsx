@@ -133,6 +133,12 @@ export default function Onboarding() {
   }, [flow]);
 
   const initializeGoogleSignIn = () => {
+    if (!googleClientId) {
+      console.warn(
+        'Google Sign-In: NEXT_PUBLIC_GOOGLE_CLIENT_ID is not configured.',
+      );
+      return;
+    }
     if (typeof window !== 'undefined' && (window as any).google) {
       try {
         (window as any).google.accounts.id.initialize({
