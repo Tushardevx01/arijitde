@@ -33,7 +33,7 @@ const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 // Rate limiter for sensitive auth endpoints only (not /me, /phone, /logout)
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 15, // 15 attempts per window
+  max: 100, // 15 attempts per window
   standardHeaders: true,
   legacyHeaders: false,
   message: {
