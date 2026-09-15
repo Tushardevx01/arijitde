@@ -191,17 +191,6 @@ export default function Footer({ footerRef, onBookCallClick }: FooterProps) {
             Cookies
           </a>
         </div>
-        <span>
-          Designed and Developed by{' '}
-          <a
-            href="https://arddev.in"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="hover:text-primary font-bold transition duration-200 font-sans"
-          >
-            ard.dev
-          </a>
-        </span>
       </div>
 
       {/* Big Brand Logo Text */}
