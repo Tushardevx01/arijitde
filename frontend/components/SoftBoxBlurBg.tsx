@@ -81,20 +81,20 @@ export default function SoftBoxBlurBg() {
         }}
       />
 
-      {/* 2. Soft Ambient Fluid Aurora Gradient Orbs - Hidden on mobile */}
-      <div className="hidden md:block absolute inset-0 overflow-hidden">
-        {/* Sky Blue / Cyan Light Source (Bottom Left) - Hidden on mobile */}
+      {/* 2. Soft Ambient Fluid Aurora Gradient Orbs */}
+      <div className="absolute inset-0 overflow-hidden">
+        {/* Sky Blue / Cyan Light Source (Bottom Left) */}
         <div
-          className="hidden md:block orb-1 absolute bottom-[-10%] left-[-5%] w-[680px] h-[680px] rounded-full blur-[110px] pointer-events-none opacity-70"
+          className="orb-1 absolute bottom-[-10%] left-[-10%] md:left-[-5%] w-[420px] h-[420px] md:w-[680px] md:h-[680px] rounded-full blur-[80px] md:blur-[110px] pointer-events-none opacity-75"
           style={{
             background:
               'radial-gradient(circle, rgba(147, 197, 253, 0.75) 0%, rgba(186, 230, 253, 0.45) 45%, rgba(242, 240, 239, 0) 75%)',
           }}
         />
 
-        {/* Ocean Indigo / Azure Bloom (Bottom Right) - Hidden on mobile */}
+        {/* Ocean Indigo / Azure Bloom (Bottom Right) */}
         <div
-          className="hidden md:block orb-2 absolute bottom-[-12%] right-[-8%] w-[750px] h-[750px] rounded-full blur-[120px] pointer-events-none opacity-65"
+          className="orb-2 absolute bottom-[-12%] right-[-10%] md:right-[-8%] w-[450px] h-[450px] md:w-[750px] md:h-[750px] rounded-full blur-[80px] md:blur-[120px] pointer-events-none opacity-70"
           style={{
             background:
               'radial-gradient(circle, rgba(191, 219, 254, 0.8) 0%, rgba(224, 242, 254, 0.5) 40%, rgba(242, 240, 239, 0) 75%)',
@@ -103,16 +103,16 @@ export default function SoftBoxBlurBg() {
 
         {/* Subtle Warm Amber / Gold Wealth Shimmer (Center Top) */}
         <div
-          className="orb-3 absolute top-[-10%] left-[30%] w-[550px] h-[550px] rounded-full blur-[130px] pointer-events-none opacity-40"
+          className="orb-3 absolute top-[-10%] left-[15%] md:left-[30%] w-[380px] h-[380px] md:w-[550px] md:h-[550px] rounded-full blur-[90px] md:blur-[130px] pointer-events-none opacity-40"
           style={{
             background:
               'radial-gradient(circle, rgba(253, 230, 138, 0.45) 0%, rgba(254, 243, 199, 0.25) 40%, transparent 70%)',
           }}
         />
 
-        {/* Emerald Precision Accent (Center Bottom) - Hidden on mobile */}
+        {/* Emerald Precision Accent (Center Bottom) */}
         <div
-          className="hidden md:block orb-1 absolute bottom-[-5%] left-[35%] w-[600px] h-[450px] rounded-full blur-[120px] pointer-events-none opacity-35"
+          className="orb-1 absolute bottom-[-5%] left-[20%] md:left-[35%] w-[380px] h-[300px] md:w-[600px] md:h-[450px] rounded-full blur-[80px] md:blur-[120px] pointer-events-none opacity-35"
           style={{
             background:
               'radial-gradient(ellipse, rgba(167, 243, 208, 0.5) 0%, rgba(209, 250, 229, 0.25) 45%, transparent 75%)',
@@ -120,8 +120,8 @@ export default function SoftBoxBlurBg() {
         />
       </div>
 
-      {/* 4. Elegant Glowing Financial Wave Curves (Bottom Edge) - Hidden on mobile */}
-      <div className="hidden md:block absolute bottom-0 left-0 right-0 h-[280px] overflow-hidden pointer-events-none opacity-40">
+      {/* 4. Elegant Glowing Financial Wave Curves (Bottom Edge) */}
+      <div className="absolute bottom-0 left-0 right-0 h-[220px] md:h-[280px] overflow-hidden pointer-events-none opacity-40">
         <svg
           viewBox="0 0 1440 280"
           fill="none"
