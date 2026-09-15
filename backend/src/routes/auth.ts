@@ -30,16 +30,45 @@ async function generateUniqueReferralCode() {
 const router = Router();
 const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
-// Rate limiter for sensitive auth endpoints only (not /me, /phone, /logout)
-const authLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 15, // 15 attempts per window
+/**
+ * Rate limiter for OTP sending endpoints to prevent spam.
+ */
+const otpSendLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 5,
   standardHeaders: true,
   legacyHeaders: false,
   message: {
     success: false,
-    error:
-      'Too many authentication attempts. Please wait 15 minutes and try again.',
+    error: 'Too many OTP requests. Please wait 15 minutes and try again.',
+  },
+});
+
+/**
+ * Rate limiter for password-based login endpoints to prevent brute-force attacks.
+ */
+const passwordLoginLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: {
+    success: false,
+    error: 'Too many login attempts. Please wait 15 minutes and try again.',
+  },
+});
+
+/**
+ * General rate limiter for authentication verification endpoints.
+ */
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 100, // 100 attempts per window
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: {
+    success: false,
+    error: 'Too many authentication attempts. Please wait 15 minutes and try again.',
   },
 });
 
@@ -49,7 +78,7 @@ const sendOtpSchema = z.object({
   isRegistration: z.boolean().optional(),
 });
 
-router.post('/otp/send', authLimiter, async (req, res, next) => {
+router.post('/otp/send', otpSendLimiter, async (req, res, next) => {
   try {
     const { email, isRegistration } = sendOtpSchema.parse(req.body);
     const formattedEmail = email.toLowerCase();
@@ -220,7 +249,7 @@ const adminLoginSchema = z.object({
   password: z.string().min(1, 'Password is required'),
 });
 
-router.post('/admin/login', authLimiter, async (req, res, next) => {
+router.post('/admin/login', passwordLoginLimiter, async (req, res, next) => {
   try {
     const { email, password } = adminLoginSchema.parse(req.body);
     const formattedEmail = email.toLowerCase();
@@ -603,7 +632,7 @@ const panLoginSchema = z.object({
   password: z.string().min(1, 'Password is required'),
 });
 
-router.post('/pan/login', authLimiter, async (req, res, next) => {
+router.post('/pan/login', passwordLoginLimiter, async (req, res, next) => {
   try {
     const { pan, password } = panLoginSchema.parse(req.body);
     const formattedPan = pan.trim().toUpperCase();
@@ -677,7 +706,7 @@ const sendResetOtpSchema = z.object({
   email: z.string().email('Invalid email address'),
 });
 
-router.post('/password/reset/send-otp', authLimiter, async (req, res, next) => {
+router.post('/password/reset/send-otp', otpSendLimiter, async (req, res, next) => {
   try {
     const { email } = sendResetOtpSchema.parse(req.body);
     const formattedEmail = email.toLowerCase();
@@ -771,7 +800,7 @@ const sendActivationOtpSchema = z.object({
   email: z.string().email('Invalid email address'),
 });
 
-router.post('/activation/send-otp', authLimiter, async (req, res, next) => {
+router.post('/activation/send-otp', otpSendLimiter, async (req, res, next) => {
   try {
     const { pan, email } = sendActivationOtpSchema.parse(req.body);
     const formattedPan = pan.trim().toUpperCase();
@@ -995,7 +1024,7 @@ const clientOtpSendSchema = z.object({
   email: z.string().email('Invalid email address'),
 });
 
-router.post('/client/otp/send', authLimiter, async (req, res, next) => {
+router.post('/client/otp/send', otpSendLimiter, async (req, res, next) => {
   try {
     const { email } = clientOtpSendSchema.parse(req.body);
     const formattedEmail = email.toLowerCase();

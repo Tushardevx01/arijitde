@@ -138,3 +138,15 @@ app.use(errorHandler);
 app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);
 });
+
+// ─── Render Keep-Alive ──────────────────────────────────────────────────────
+// Prevents the Render free tier service from sleeping by pinging itself every 10 minutes
+const RENDER_EXTERNAL_URL = process.env.RENDER_EXTERNAL_URL;
+if (RENDER_EXTERNAL_URL) {
+  console.log(`Setting up Render Keep-Alive for ${RENDER_EXTERNAL_URL}`);
+  setInterval(() => {
+    fetch(`${RENDER_EXTERNAL_URL}/api/health`)
+      .then((res) => console.log(`[Keep-Alive] Ping successful: ${res.status}`))
+      .catch((err) => console.error(`[Keep-Alive] Ping failed:`, err.message));
+  }, 10 * 60 * 1000); // 10 minutes
+}
