@@ -52,8 +52,9 @@ export default function Onboarding() {
   const [clientTempToken, setClientTempToken] = useState('');
   const [selectedAccount, setSelectedAccount] = useState<any>(null);
   const [enteredPan, setEnteredPan] = useState('');
-  const backendUrl = process.env.NEXT_PUBLIC_API_URL;
-  const googleClientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID;
+  const backendUrl =
+    process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+  const googleClientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || '';
 
   const setAuthSession = (token: string, user: any, remember: boolean) => {
     localStorage.setItem('token', token);
@@ -133,6 +134,12 @@ export default function Onboarding() {
   }, [flow]);
 
   const initializeGoogleSignIn = () => {
+    if (!googleClientId) {
+      console.warn(
+        'Google Sign-In: NEXT_PUBLIC_GOOGLE_CLIENT_ID is not configured.',
+      );
+      return;
+    }
     if (typeof window !== 'undefined' && (window as any).google) {
       try {
         (window as any).google.accounts.id.initialize({
