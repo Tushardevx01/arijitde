@@ -270,7 +270,7 @@ export default function UserDashboard() {
   const [isExistingClient, setIsExistingClient] = useState(false);
   const [existingClientData, setExistingClientData] = useState<any>(null);
 
-  const backendUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+  const backendUrl = process.env.NEXT_PUBLIC_API_URL || '';
 
   // Auth Guard & Initial Fetch
   useEffect(() => {

@@ -368,7 +368,7 @@ export default function ClientDashboard() {
 
   const [rememberMe, setRememberMe] = useState(true);
 
-  const backendUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+  const backendUrl = process.env.NEXT_PUBLIC_API_URL || "";
 
   const setAuthSession = (token: string, user: any, remember: boolean) => {
     localStorage.setItem("token", token);

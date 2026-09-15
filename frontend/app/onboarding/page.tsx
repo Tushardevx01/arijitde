@@ -52,7 +52,7 @@ export default function Onboarding() {
   const [clientTempToken, setClientTempToken] = useState('');
   const [selectedAccount, setSelectedAccount] = useState<any>(null);
   const [enteredPan, setEnteredPan] = useState('');
-  const backendUrl = process.env.NEXT_PUBLIC_API_URL;
+  const backendUrl = process.env.NEXT_PUBLIC_API_URL || '';
   const googleClientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID;
 
   const setAuthSession = (token: string, user: any, remember: boolean) => {
