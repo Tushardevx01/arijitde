@@ -1,7 +1,10 @@
-import dotenv from 'dotenv';
-dotenv.config();
-
 import path from 'path';
+import dotenv from 'dotenv';
+
+dotenv.config();
+if (!process.env.JWT_SECRET) {
+  dotenv.config({ path: path.resolve(__dirname, '../../.env') });
+}
 import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
