@@ -197,16 +197,7 @@
   }
 }
 
-@media (max-width: 1024px), (hover: none) {
-  .page-backdrop {
-    background-image: none !important;
-  }
-  :root, .dark {
-    --bg-glow-start: transparent;
-    --bg-glow-mid: transparent;
-    --bg-glow-end: transparent;
-  }
-}
+
 
 /* Decorative children stay aligned to the real viewport box, not the bled one. */
 .page-backdrop > .backdrop-inner {
