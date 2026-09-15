@@ -5,6 +5,10 @@ services:
     rootDir: backend
     buildCommand: npm install && npm run build
     startCommand: npm start
+    disk:
+      name: uploads
+      mountPath: /opt/render/project/src/backend/uploads
+      sizeGB: 1
     envVars:
       - key: NODE_VERSION
         value: 22.x
