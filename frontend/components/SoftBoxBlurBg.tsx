@@ -80,6 +80,7 @@ export default function SoftBoxBlurBg() {
           style={{
             background:
               'radial-gradient(circle, rgba(147, 197, 253, 0.75) 0%, rgba(186, 230, 253, 0.45) 45%, rgba(242, 240, 239, 0) 75%)',
+            transform: 'translateZ(0)',
           }}
         />
 
@@ -89,6 +90,7 @@ export default function SoftBoxBlurBg() {
           style={{
             background:
               'radial-gradient(circle, rgba(191, 219, 254, 0.8) 0%, rgba(224, 242, 254, 0.5) 40%, rgba(242, 240, 239, 0) 75%)',
+            transform: 'translateZ(0)',
           }}
         />
 
@@ -98,6 +100,7 @@ export default function SoftBoxBlurBg() {
           style={{
             background:
               'radial-gradient(circle, rgba(253, 230, 138, 0.45) 0%, rgba(254, 243, 199, 0.25) 40%, transparent 70%)',
+            transform: 'translateZ(0)',
           }}
         />
 
@@ -107,6 +110,7 @@ export default function SoftBoxBlurBg() {
           style={{
             background:
               'radial-gradient(ellipse, rgba(167, 243, 208, 0.5) 0%, rgba(209, 250, 229, 0.25) 45%, transparent 75%)',
+            transform: 'translateZ(0)',
           }}
         />
       </div>
