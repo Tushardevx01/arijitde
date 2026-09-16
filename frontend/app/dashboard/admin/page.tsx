@@ -342,8 +342,6 @@ export default function AdminDashboard() {
     danger: false,
   });
 
-  const backendUrl = process.env.NEXT_PUBLIC_API_URL || '';
-
   // 1. Auth Guard and token initialisation
   useEffect(() => {
     setMounted(true);
@@ -431,7 +429,7 @@ export default function AdminDashboard() {
       const formData = new FormData();
       formData.append('file', file);
 
-      const res = await fetch(`${backendUrl}/api/admin/folios/upload`, {
+      const res = await fetch(`/api/admin/folios/upload`, {
         method: 'POST',
         headers: {
           Authorization: `Bearer ${token}`,
@@ -470,7 +468,7 @@ export default function AdminDashboard() {
       danger: true,
       onConfirm: async () => {
         try {
-          const res = await fetch(`${backendUrl}/api/admin/folios/clear`, {
+          const res = await fetch(`/api/admin/folios/clear`, {
             method: 'DELETE',
             headers: {
               Authorization: `Bearer ${token}`,
@@ -529,7 +527,7 @@ export default function AdminDashboard() {
       });
 
       const res = await fetch(
-        `${backendUrl}/api/admin/existing-clients?${queryParams.toString()}`,
+        `/api/admin/existing-clients?${queryParams.toString()}`,
         { headers },
       );
       if (!res.ok)
@@ -563,7 +561,7 @@ export default function AdminDashboard() {
       setDeletingClient(true);
       const headers = { Authorization: `Bearer ${token}` };
       const res = await fetch(
-        `${backendUrl}/api/admin/existing-clients/${id}`,
+        `/api/admin/existing-clients/${id}`,
         {
           method: 'DELETE',
           headers,
@@ -603,7 +601,7 @@ export default function AdminDashboard() {
 
     try {
       const headers = { Authorization: `Bearer ${token}` };
-      const res = await fetch(`${backendUrl}/api/leads/admin/sessions/${id}`, {
+      const res = await fetch(`/api/leads/admin/sessions/${id}`, {
         method: 'DELETE',
         headers,
       });
@@ -637,7 +635,7 @@ export default function AdminDashboard() {
 
     try {
       const headers = { Authorization: `Bearer ${token}` };
-      const res = await fetch(`${backendUrl}/api/admin/queries/${id}`, {
+      const res = await fetch(`/api/admin/queries/${id}`, {
         method: 'DELETE',
         headers,
       });
@@ -679,7 +677,7 @@ export default function AdminDashboard() {
     try {
       setFetchingAumData(true);
       const headers = { Authorization: `Bearer ${token}` };
-      const res = await fetch(`${backendUrl}/api/admin/aum-distribution`, {
+      const res = await fetch(`/api/admin/aum-distribution`, {
         headers,
       });
       if (!res.ok) throw new Error('Failed to retrieve AUM distribution');
@@ -707,7 +705,7 @@ export default function AdminDashboard() {
     try {
       setFetchingQueries(true);
       const headers = { Authorization: `Bearer ${token}` };
-      const res = await fetch(`${backendUrl}/api/admin/queries`, { headers });
+      const res = await fetch(`/api/admin/queries`, { headers });
       if (!res.ok) throw new Error('Failed to retrieve client queries');
       const resData = await res.json();
       setSupportQueries(resData.data || []);
@@ -730,7 +728,7 @@ export default function AdminDashboard() {
         Authorization: `Bearer ${token}`,
         'Content-Type': 'application/json',
       };
-      const res = await fetch(`${backendUrl}/api/admin/queries/${queryId}`, {
+      const res = await fetch(`/api/admin/queries/${queryId}`, {
         method: 'PATCH',
         headers,
         body: JSON.stringify({ status: 'RESOLVED' }),
@@ -763,7 +761,7 @@ export default function AdminDashboard() {
       formData.append('file', file);
 
       const res = await fetch(
-        `${backendUrl}/api/admin/existing-clients/upload`,
+        `/api/admin/existing-clients/upload`,
         {
           method: 'POST',
           headers: {
@@ -812,7 +810,7 @@ export default function AdminDashboard() {
         try {
           setFetchingExistingClients(true);
           const res = await fetch(
-            `${backendUrl}/api/admin/existing-clients/clear`,
+            `/api/admin/existing-clients/clear`,
             {
               method: 'DELETE',
               headers: {
@@ -858,7 +856,7 @@ export default function AdminDashboard() {
       formData.append('file', file);
 
       const res = await fetch(
-        `${backendUrl}/api/admin/portfolio-valuations/upload`,
+        `/api/admin/portfolio-valuations/upload`,
         {
           method: 'POST',
           headers: {
@@ -904,7 +902,7 @@ export default function AdminDashboard() {
         try {
           setFetchingPortfolioValuations(true);
           const res = await fetch(
-            `${backendUrl}/api/admin/portfolio-valuations/clear`,
+            `/api/admin/portfolio-valuations/clear`,
             {
               method: 'DELETE',
               headers: {
@@ -942,7 +940,7 @@ export default function AdminDashboard() {
     try {
       setFetchingContactMessages(true);
       const headers = { Authorization: `Bearer ${token}` };
-      const res = await fetch(`${backendUrl}/api/admin/contact-messages`, {
+      const res = await fetch(`/api/admin/contact-messages`, {
         headers,
       });
       if (!res.ok) throw new Error('Failed to retrieve contact messages');
@@ -959,7 +957,7 @@ export default function AdminDashboard() {
     try {
       setFetchingAvailability(true);
       const headers = { Authorization: `Bearer ${token}` };
-      const res = await fetch(`${backendUrl}/api/admin/availability`, {
+      const res = await fetch(`/api/admin/availability`, {
         headers,
       });
       if (!res.ok) throw new Error('Failed to retrieve availability slots');
@@ -979,7 +977,7 @@ export default function AdminDashboard() {
         Authorization: `Bearer ${token}`,
         'Content-Type': 'application/json',
       };
-      const res = await fetch(`${backendUrl}/api/admin/availability`, {
+      const res = await fetch(`/api/admin/availability`, {
         method: 'POST',
         headers,
         body: JSON.stringify({ slots: updatedSlots }),
@@ -1005,7 +1003,7 @@ export default function AdminDashboard() {
       const headers = { Authorization: `Bearer ${token}` };
 
       // Verify role is ADMIN
-      const meRes = await fetch(`${backendUrl}/api/auth/me`, { headers });
+      const meRes = await fetch(`/api/auth/me`, { headers });
       if (!meRes.ok) throw new Error('Failed to verify token');
       const meData = await meRes.json();
 
@@ -1019,8 +1017,8 @@ export default function AdminDashboard() {
 
       // Fetch Stats & Users
       const [statsRes, usersRes] = await Promise.all([
-        fetch(`${backendUrl}/api/admin/stats`, { headers }),
-        fetch(`${backendUrl}/api/admin/users`, { headers }),
+        fetch(`/api/admin/stats`, { headers }),
+        fetch(`/api/admin/users`, { headers }),
       ]);
 
       if (!statsRes.ok || !usersRes.ok) {
@@ -1053,7 +1051,7 @@ export default function AdminDashboard() {
     try {
       setLoadingAdvisory(true);
       const headers = { Authorization: `Bearer ${token}` };
-      const res = await fetch(`${backendUrl}/api/leads/admin/sessions`, {
+      const res = await fetch(`/api/leads/admin/sessions`, {
         headers,
       });
       const data = await res.json();
@@ -1079,7 +1077,7 @@ export default function AdminDashboard() {
         Authorization: `Bearer ${token}`,
       };
       const res = await fetch(
-        `${backendUrl}/api/leads/admin/sessions/${sessionId}/confirm`,
+        `/api/leads/admin/sessions/${sessionId}/confirm`,
         {
           method: 'POST',
           headers,
@@ -1115,7 +1113,7 @@ export default function AdminDashboard() {
         Authorization: `Bearer ${token}`,
       };
       const res = await fetch(
-        `${backendUrl}/api/leads/admin/sessions/${sessionId}/notes`,
+        `/api/leads/admin/sessions/${sessionId}/notes`,
         {
           method: 'POST',
           headers,
@@ -1153,7 +1151,7 @@ export default function AdminDashboard() {
       setUpdatingSession(true);
       const headers = { Authorization: `Bearer ${token}` };
       const res = await fetch(
-        `${backendUrl}/api/leads/admin/sessions/${sessionId}/refund`,
+        `/api/leads/admin/sessions/${sessionId}/refund`,
         {
           method: 'POST',
           headers,
@@ -1193,7 +1191,7 @@ export default function AdminDashboard() {
         'Content-Type': 'application/json',
       };
 
-      const res = await fetch(`${backendUrl}/api/admin/users/${userId}/role`, {
+      const res = await fetch(`/api/admin/users/${userId}/role`, {
         method: 'POST',
         headers,
         body: JSON.stringify({ role: newRole }),
@@ -1244,7 +1242,7 @@ export default function AdminDashboard() {
       };
 
       const res = await fetch(
-        `${backendUrl}/api/admin/users/${userId}/client-profile`,
+        `/api/admin/users/${userId}/client-profile`,
         {
           method: 'POST',
           headers,
@@ -1293,7 +1291,7 @@ export default function AdminDashboard() {
       };
 
       const res = await fetch(
-        `${backendUrl}/api/leads/${selectedLeadId}/status`,
+        `/api/leads/${selectedLeadId}/status`,
         {
           method: 'PUT',
           headers,

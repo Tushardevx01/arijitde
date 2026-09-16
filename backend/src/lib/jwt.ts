@@ -14,24 +14,34 @@ export interface JWTPayload {
   role: Role;
 }
 
-/**
- * Signs a JWT token with the provided user payload.
- * Generates a token that expires in 24 hours to mitigate security risks 
- * associated with long-lived tokens lacking revocation mechanisms.
- * 
- * @param payload - The JWT payload containing userId, email, and role.
- * @returns The signed JWT string.
- */
-export function signToken(payload: JWTPayload): string {
-  return jwt.sign(payload, SECRET, { expiresIn: '24h' });
+interface RefreshPayload {
+  userId: string;
+  type: 'refresh';
 }
 
-/**
- * Verifies and decodes a JWT token.
- * 
- * @param token - The JWT string to verify.
- * @returns The decoded JWTPayload.
- */
-export function verifyToken(token: string): JWTPayload {
+export function signAccessToken(payload: JWTPayload): string {
+  return jwt.sign(payload, SECRET, { expiresIn: '15m' });
+}
+
+export function signRefreshToken(userId: string): string {
+  return jwt.sign({ userId, type: 'refresh' } satisfies RefreshPayload, SECRET, {
+    expiresIn: '30d',
+  });
+}
+
+export function verifyAccessToken(token: string): JWTPayload {
   return jwt.verify(token, SECRET) as unknown as JWTPayload;
+}
+
+export function verifyRefreshToken(token: string): RefreshPayload {
+  return jwt.verify(token, SECRET) as unknown as RefreshPayload;
+}
+
+// Legacy alias — existing code uses signToken / verifyToken
+export function signToken(payload: JWTPayload): string {
+  return signAccessToken(payload);
+}
+
+export function verifyToken(token: string): JWTPayload {
+  return verifyAccessToken(token);
 }

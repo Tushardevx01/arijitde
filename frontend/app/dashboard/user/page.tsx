@@ -270,8 +270,6 @@ export default function UserDashboard() {
   const [isExistingClient, setIsExistingClient] = useState(false);
   const [existingClientData, setExistingClientData] = useState<any>(null);
 
-  const backendUrl = process.env.NEXT_PUBLIC_API_URL || '';
-
   // Auth Guard & Initial Fetch
   useEffect(() => {
     document.title = 'Workspace | FinAnalysis';
@@ -327,7 +325,7 @@ export default function UserDashboard() {
     try {
       setFetchingSlots(true);
       const headers = { Authorization: `Bearer ${token}` };
-      const res = await fetch(`${backendUrl}/api/leads/availability`, {
+      const res = await fetch(`/api/leads/availability`, {
         headers,
       });
       const resData = await res.json();
@@ -355,7 +353,7 @@ export default function UserDashboard() {
         Authorization: `Bearer ${token}`,
         'Content-Type': 'application/json',
       };
-      const res = await fetch(`${backendUrl}/api/leads/book-session`, {
+      const res = await fetch(`/api/leads/book-session`, {
         method: 'POST',
         headers,
         body: JSON.stringify({
@@ -394,7 +392,7 @@ export default function UserDashboard() {
       // 1. Fetch user profile role updates with clientDate for daily reward check
       const todayISO = new Date().toLocaleDateString('en-CA'); // YYYY-MM-DD in local timezone
       const meRes = await fetch(
-        `${backendUrl}/api/auth/me?clientDate=${todayISO}`,
+        `/api/auth/me?clientDate=${todayISO}`,
         { headers },
       );
       if (meRes.status === 401) {
@@ -450,7 +448,7 @@ export default function UserDashboard() {
       setPayments(userPayments);
 
       // Fetch bookings
-      const leadsRes = await fetch(`${backendUrl}/api/leads/my-bookings`, {
+      const leadsRes = await fetch(`/api/leads/my-bookings`, {
         headers,
       });
       const leadsData = await leadsRes.json();
@@ -458,7 +456,7 @@ export default function UserDashboard() {
       setBookings(userBookings);
 
       // Fetch portfolio review discussions
-      const sessionsRes = await fetch(`${backendUrl}/api/leads/my-sessions`, {
+      const sessionsRes = await fetch(`/api/leads/my-sessions`, {
         headers,
       });
       const sessionsData = await sessionsRes.json();
@@ -469,7 +467,7 @@ export default function UserDashboard() {
       const hasSession = userSessions.length > 0;
 
       // 3. Fetch assessments
-      const assessRes = await fetch(`${backendUrl}/api/assess`, { headers });
+      const assessRes = await fetch(`/api/assess`, { headers });
       const assessData = await assessRes.json();
       const userAssessments = assessData.success ? assessData.data : [];
 
@@ -512,7 +510,7 @@ export default function UserDashboard() {
 
       // 4. Check if user is an existing client (has matching folio records)
       try {
-        const ecRes = await fetch(`${backendUrl}/api/portfolio/client-data`, {
+        const ecRes = await fetch(`/api/portfolio/client-data`, {
           headers,
         });
         const ecData = await ecRes.json();
@@ -534,7 +532,7 @@ export default function UserDashboard() {
       }
 
       // 5. Fetch portfolios
-      const portRes = await fetch(`${backendUrl}/api/portfolio`, { headers });
+      const portRes = await fetch(`/api/portfolio`, { headers });
       const portData = await portRes.json();
       const userPortfolios = portData.success ? portData.data : [];
 
@@ -599,7 +597,7 @@ export default function UserDashboard() {
     setModalSubmitting(true);
 
     try {
-      const res = await fetch(`${backendUrl}/api/auth/phone`, {
+      const res = await fetch(`/api/auth/phone`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -645,7 +643,7 @@ export default function UserDashboard() {
     setStatusMsg('Initializing checkout order...');
 
     try {
-      const res = await fetch(`${backendUrl}/api/payments/checkout`, {
+      const res = await fetch(`/api/payments/checkout`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -675,7 +673,7 @@ export default function UserDashboard() {
         setStatusMsg('Mock payment mode. Simulating success...');
         // Auto-confirm mock payment
         const confirmRes = await fetch(
-          `${backendUrl}/api/payments/mock-confirm`,
+          `/api/payments/mock-confirm`,
           {
             method: 'POST',
             headers: {
@@ -758,7 +756,7 @@ export default function UserDashboard() {
     setStatusMsg('Registering your financial profile...');
 
     try {
-      const res = await fetch(`${backendUrl}/api/assess`, {
+      const res = await fetch(`/api/assess`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -829,7 +827,7 @@ export default function UserDashboard() {
       formData.append('file', uploadedFile);
       formData.append('assessmentId', activeAssessmentId);
 
-      const res = await fetch(`${backendUrl}/api/portfolio/upload`, {
+      const res = await fetch(`/api/portfolio/upload`, {
         method: 'POST',
         headers: {
           Authorization: `Bearer ${token}`,
@@ -895,7 +893,7 @@ export default function UserDashboard() {
     setStatusMsg('Analyzing asset allocation and portfolio score...');
 
     try {
-      const res = await fetch(`${backendUrl}/api/portfolio/manual`, {
+      const res = await fetch(`/api/portfolio/manual`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -942,7 +940,7 @@ export default function UserDashboard() {
     setStatusMsg('Importing your existing fund records...');
 
     try {
-      const res = await fetch(`${backendUrl}/api/portfolio/from-folios`, {
+      const res = await fetch(`/api/portfolio/from-folios`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -972,7 +970,7 @@ export default function UserDashboard() {
   // Run Score Engine API Call
   const calculatePortfolioScore = async (portfolioId: string) => {
     try {
-      const res = await fetch(`${backendUrl}/api/score/${portfolioId}`, {
+      const res = await fetch(`/api/score/${portfolioId}`, {
         method: 'POST',
         headers: {
           Authorization: `Bearer ${token}`,

@@ -52,7 +52,6 @@ export default function Onboarding() {
   const [clientTempToken, setClientTempToken] = useState('');
   const [selectedAccount, setSelectedAccount] = useState<any>(null);
   const [enteredPan, setEnteredPan] = useState('');
-  const backendUrl = process.env.NEXT_PUBLIC_API_URL || '';
   const googleClientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID;
 
   const setAuthSession = (token: string, user: any, remember: boolean) => {
@@ -181,7 +180,7 @@ export default function Onboarding() {
     const idToken = response.credential;
 
     try {
-      const res = await fetch(`${backendUrl}/api/auth/google`, {
+      const res = await fetch(`/api/auth/google`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ token: idToken }),
@@ -234,7 +233,7 @@ export default function Onboarding() {
       setLoading(true);
 
       try {
-        const res = await fetch(`${backendUrl}/api/auth/admin/login`, {
+        const res = await fetch(`/api/auth/admin/login`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ email, password }),
@@ -283,7 +282,7 @@ export default function Onboarding() {
 
     try {
       // Step 1: Call endpoint to send OTP
-      const res = await fetch(`${backendUrl}/api/auth/otp/send`, {
+      const res = await fetch(`/api/auth/otp/send`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -321,7 +320,7 @@ export default function Onboarding() {
 
     try {
       // Step 2: Call endpoint to verify OTP
-      const res = await fetch(`${backendUrl}/api/auth/otp/verify`, {
+      const res = await fetch(`/api/auth/otp/verify`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -375,7 +374,7 @@ export default function Onboarding() {
     setLoading(true);
 
     try {
-      const res = await fetch(`${backendUrl}/api/auth/client/otp/send`, {
+      const res = await fetch(`/api/auth/client/otp/send`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email: trimmedEmail }),
@@ -411,7 +410,7 @@ export default function Onboarding() {
     setLoading(true);
 
     try {
-      const res = await fetch(`${backendUrl}/api/auth/client/otp/verify`, {
+      const res = await fetch(`/api/auth/client/otp/verify`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email: trimmedEmail, otp: trimmedOtp }),
@@ -447,7 +446,7 @@ export default function Onboarding() {
     setLoading(true);
 
     try {
-      const res = await fetch(`${backendUrl}/api/auth/client/pan/verify`, {
+      const res = await fetch(`/api/auth/client/pan/verify`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

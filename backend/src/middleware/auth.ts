@@ -1,4 +1,5 @@
 import type { Request, Response, NextFunction } from 'express';
+import jwt from 'jsonwebtoken';
 import { verifyToken } from '../lib/jwt';
 import { prisma } from '../lib/prisma';
 import { Role } from '@prisma/client';
@@ -49,8 +50,6 @@ export async function authMiddleware(
 
   try {
     const decoded = verifyToken(token);
-
-    // Fetch the user from the database to check if they still exist
     const user = await prisma.user.findUnique({
       where: { id: decoded.userId },
       select: {
@@ -87,10 +86,18 @@ export async function authMiddleware(
     req.user = user;
     next();
   } catch (error) {
-    res.status(401).json({
-      success: false,
-      error: 'Unauthorized: Token has expired or is invalid',
-    });
+    if (error instanceof jwt.TokenExpiredError) {
+      res.status(401).json({
+        success: false,
+        error: 'Access token has expired',
+        code: 'TOKEN_EXPIRED',
+      });
+    } else {
+      res.status(401).json({
+        success: false,
+        error: 'Unauthorized: Token is invalid',
+      });
+    }
   }
 }
 

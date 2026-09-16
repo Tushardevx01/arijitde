@@ -20,6 +20,8 @@ import contactRouter from './routes/contact';
 import supportRouter from './routes/support';
 import { errorHandler } from './middleware/error';
 import { authMiddleware } from './middleware/auth';
+import { csrfMiddleware } from './middleware/csrf';
+import cookieParser from 'cookie-parser';
 
 // Verify required environment variables
 const requiredEnvVars = [
@@ -94,6 +96,12 @@ app.use(
 
 // F8: Explicit JSON body size limit to prevent payload abuse
 app.use(express.json({ limit: '50kb' }));
+
+// Cookie parser (must come before CSRF)
+app.use(cookieParser());
+
+// CSRF protection (double-submit cookie, exempts Bearer tokens)
+app.use(csrfMiddleware);
 
 // F5: Global rate limiter — 200 requests per 15 min per IP
 const globalLimiter = rateLimit({

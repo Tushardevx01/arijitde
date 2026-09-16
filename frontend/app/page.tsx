@@ -320,8 +320,7 @@ export default function Home() {
       setContactError(null);
       setContactSuccess(false);
 
-      const backendUrl = process.env.NEXT_PUBLIC_API_URL || '';
-      const response = await fetch(`${backendUrl}/api/contact`, {
+      const response = await fetch(`/api/contact`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

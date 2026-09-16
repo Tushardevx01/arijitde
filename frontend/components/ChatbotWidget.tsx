@@ -101,8 +101,6 @@ export default function ChatbotWidget({
   const [isTyping, setIsTyping] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
 
-  const backendUrl = process.env.NEXT_PUBLIC_API_URL || '';
-
   useEffect(() => {
     setMounted(true);
     setMessages((prev) =>
@@ -170,7 +168,7 @@ export default function ChatbotWidget({
         content: msg.text,
       }));
 
-      const res = await fetch(`${backendUrl}/api/chat`, {
+      const res = await fetch(`/api/chat`, {
         method: 'POST',
         headers,
         body: JSON.stringify({ messages: history }),

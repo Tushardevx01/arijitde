@@ -6,7 +6,7 @@ import jwt from 'jsonwebtoken';
 import rateLimit from 'express-rate-limit';
 import { generateOTP, sendOTP, saveOTP, verifyOTP } from '../services/otp';
 import { prisma } from '../lib/prisma';
-import { signToken } from '../lib/jwt';
+import { signToken, signAccessToken, signRefreshToken, verifyRefreshToken } from '../lib/jwt';
 import { authMiddleware } from '../middleware/auth';
 import type { AuthenticatedRequest } from '../middleware/auth';
 import { OAuth2Client } from 'google-auth-library';
@@ -70,6 +70,106 @@ const authLimiter = rateLimit({
     success: false,
     error: 'Too many authentication attempts. Please wait 15 minutes and try again.',
   },
+});
+
+const REFRESH_ENABLED = process.env.ENABLE_REFRESH_TOKENS === 'true';
+
+async function createTokenPair(user: { id: string; email: string | null; role: any }) {
+  if (REFRESH_ENABLED) {
+    const accessToken = signAccessToken({ userId: user.id, email: user.email ?? '', role: user.role });
+    const refreshToken = signRefreshToken(user.id);
+    const hashedToken = await bcrypt.hash(refreshToken, 10);
+    const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000); // 30 days
+
+    await prisma.refreshToken.create({
+      data: { token: hashedToken, userId: user.id, expiresAt },
+    });
+
+    return { token: accessToken, refreshToken };
+  }
+  return { token: signToken({ userId: user.id, email: user.email ?? '', role: user.role }) };
+}
+
+// POST /api/auth/refresh
+router.post('/refresh', async (req: Request, res: Response, next) => {
+  try {
+    if (!REFRESH_ENABLED) {
+      res.status(404).json({ success: false, error: 'Refresh tokens not enabled' });
+      return;
+    }
+
+    const refreshToken = req.cookies?.refreshToken || req.body?.refreshToken;
+    if (!refreshToken) {
+      res.status(401).json({ success: false, error: 'Refresh token required' });
+      return;
+    }
+
+    let decoded;
+    try {
+      decoded = verifyRefreshToken(refreshToken);
+    } catch {
+      res.status(401).json({ success: false, error: 'Invalid or expired refresh token' });
+      return;
+    }
+
+    // Find matching token in DB (compare hashes)
+    const storedTokens = await prisma.refreshToken.findMany({
+      where: { userId: decoded.userId },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    let matchedToken: typeof storedTokens[0] | null = null;
+    for (const stored of storedTokens) {
+      if (await bcrypt.compare(refreshToken, stored.token)) {
+        matchedToken = stored;
+        break;
+      }
+    }
+
+    if (!matchedToken) {
+      // Token not found or already revoked — revoke all for this user (possible theft)
+      await prisma.refreshToken.deleteMany({ where: { userId: decoded.userId } });
+      res.status(401).json({ success: false, error: 'Refresh token revoked — all sessions terminated' });
+      return;
+    }
+
+    // Rotate: revoke old, issue new pair
+    await prisma.refreshToken.delete({ where: { id: matchedToken.id } });
+
+    const user = await prisma.user.findUnique({ where: { id: decoded.userId } });
+    if (!user) {
+      res.status(401).json({ success: false, error: 'User not found' });
+      return;
+    }
+
+    const tokens = await createTokenPair(user);
+
+    // Set refresh token in httpOnly cookie
+    res.cookie('refreshToken', tokens.refreshToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
+      path: '/',
+    });
+
+    res.json({ success: true, data: { token: tokens.token } });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// POST /api/auth/logout
+router.post('/logout', authMiddleware, async (req: AuthenticatedRequest, res: Response, next) => {
+  try {
+    const userId = req.user!.id;
+    // Revoke all refresh tokens for this user
+    await prisma.refreshToken.deleteMany({ where: { userId } });
+    res.clearCookie('refreshToken', { path: '/' });
+    res.json({ success: true, message: 'Logged out successfully' });
+  } catch (error) {
+    next(error);
+  }
 });
 
 // 1. POST /api/auth/otp/send
@@ -220,16 +320,12 @@ router.post('/otp/verify', authLimiter, async (req, res, next) => {
       }
     }
 
-    const token = signToken({
-      userId: user.id,
-      email: user.email || '',
-      role: user.role,
-    });
+    const tokens = await createTokenPair(user);
 
     res.json({
       success: true,
       data: {
-        token,
+        token: tokens.token,
         user: {
           id: user.id,
           email: user.email,
@@ -275,16 +371,12 @@ router.post('/admin/login', passwordLoginLimiter, async (req, res, next) => {
       return;
     }
 
-    const token = signToken({
-      userId: user.id,
-      email: user.email || '',
-      role: user.role,
-    });
+    const tokens = await createTokenPair(user);
 
     res.json({
       success: true,
       data: {
-        token,
+        token: tokens.token,
         user: {
           id: user.id,
           email: user.email,
@@ -494,16 +586,12 @@ router.post('/google', authLimiter, async (req, res, next) => {
       }
     }
 
-    const jwtToken = signToken({
-      userId: user.id,
-      email: user.email || '',
-      role: user.role,
-    });
+    const tokens = await createTokenPair(user);
 
     res.json({
       success: true,
       data: {
-        token: jwtToken,
+        token: tokens.token,
         user: {
           id: user.id,
           email: user.email,
@@ -676,16 +764,12 @@ router.post('/pan/login', passwordLoginLimiter, async (req, res, next) => {
       return;
     }
 
-    const token = signToken({
-      userId: user.id,
-      email: user.email || '',
-      role: user.role,
-    });
+    const tokens = await createTokenPair(user);
 
     res.json({
       success: true,
       data: {
-        token,
+        token: tokens.token,
         user: {
           id: user.id,
           email: user.email,
@@ -992,16 +1076,12 @@ router.post('/activation/verify-otp', authLimiter, async (req, res, next) => {
       return updatedUser;
     });
 
-    const token = signToken({
-      userId: user.id,
-      email: user.email || '',
-      role: user.role,
-    });
+    const tokens = await createTokenPair(user);
 
     res.json({
       success: true,
       data: {
-        token,
+        token: tokens.token,
         user: {
           id: user.id,
           email: user.email,
@@ -1251,16 +1331,12 @@ router.post('/client/pan/verify', authLimiter, async (req, res, next) => {
       },
     });
 
-    const token = signToken({
-      userId: user.id,
-      email: user.email || '',
-      role: user.role,
-    });
+    const tokens = await createTokenPair(user);
 
     res.json({
       success: true,
       data: {
-        token,
+        token: tokens.token,
         user: {
           id: user.id,
           email: user.email,

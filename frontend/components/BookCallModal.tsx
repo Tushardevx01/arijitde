@@ -85,9 +85,8 @@ export default function BookCallModal({ isOpen, onClose }: BookCallModalProps) {
     setLoading(true);
 
     try {
-      const backendUrl = process.env.NEXT_PUBLIC_API_URL || '';
       const response = await fetch(
-        `${backendUrl}/api/leads/book-session-public`,
+        `/api/leads/book-session-public`,
         {
           method: 'POST',
           headers: {

@@ -1,22 +1,20 @@
 import { randomInt } from 'crypto';
 import { transporter } from './email';
+import { redis, isRedisAvailable } from '../lib/redis';
 
-// Memory store for OTPs: email (lowercase) -> { otp: string, expiresAt: Date, attempts: number }
+// In-memory fallback for local dev without Redis
 const otpStore = new Map<
   string,
   { otp: string; expiresAt: Date; attempts: number }
 >();
 
-/**
- * Generates a cryptographically secure random 6-digit OTP string.
- */
+const OTP_TTL_SECONDS = 600; // 10 minutes
+const MAX_ATTEMPTS = 5;
+
 export function generateOTP(): string {
   return randomInt(100000, 999999).toString();
 }
 
-/**
- * Sends OTP to the specified email address using Gmail SMTP.
- */
 export async function sendOTP(email: string, otp: string): Promise<void> {
   const mailOptions = {
     from: `"FinAnalysis" <${process.env.GMAIL_USER}>`,
@@ -38,78 +36,68 @@ export async function sendOTP(email: string, otp: string): Promise<void> {
 
   try {
     await transporter.sendMail(mailOptions);
-    console.log(`[OTP] Email sent successfully to ${email}`);
-  } catch (error) {
-    console.error(`[OTP] Failed to send email to ${email} via SMTP:`, error);
-    if (process.env.NODE_ENV !== 'production') {
-      console.warn(`[OTP] DEV FALLBACK. Code for ${email}: ${otp}`);
-    } else {
-      console.error(
-        `[OTP] SMTP delivery failed for ${email}. User will need to retry.`,
-      );
-    }
+  } catch (err) {
+    console.error('Failed to send OTP email:', err);
+    throw new Error('Failed to send OTP. Please check your email configuration.');
   }
 }
 
-/**
- * Saves OTP in the in-memory map with a 10-minute expiry time limit.
- */
-export function saveOTP(email: string, otp: string): void {
-  const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
-  otpStore.set(email.toLowerCase(), { otp, expiresAt, attempts: 0 });
+export async function saveOTP(email: string, otp: string): Promise<void> {
+  const key = `otp:${email.toLowerCase()}`;
+  const record = { otp, expiresAt: new Date(Date.now() + OTP_TTL_SECONDS * 1000), attempts: 0 };
+
+  if (isRedisAvailable()) {
+    await redis!.setex(key, OTP_TTL_SECONDS, JSON.stringify(record));
+  } else {
+    otpStore.set(key, record);
+  }
 }
 
-/**
- * Verifies if the OTP is correct and has not expired.
- * Removes OTP from the store upon successful or unsuccessful validation.
- */
-const MAX_OTP_ATTEMPTS = 5;
+export async function verifyOTP(email: string, otp: string): Promise<boolean> {
+  const key = `otp:${email.toLowerCase()}`;
 
-export function verifyOTP(email: string, otp: string): boolean {
-  // Development/Testing bypass — NEVER allow in production
-  if (
-    process.env.NODE_ENV !== 'production' &&
-    (otp === '123456' || otp === '999999')
-  ) {
+  if (isRedisAvailable()) {
+    const raw = await redis!.get<string>(key);
+    if (!raw) return false;
+
+    const record = typeof raw === 'string' ? JSON.parse(raw) : raw;
+    if (record.attempts >= MAX_ATTEMPTS) {
+      await redis!.del(key);
+      return false;
+    }
+    if (record.otp !== otp) {
+      await redis!.set(key, JSON.stringify({ ...record, attempts: record.attempts + 1 }), { ex: OTP_TTL_SECONDS });
+      return false;
+    }
+
+    await redis!.del(key);
     return true;
   }
 
-  const key = email.toLowerCase();
+  // In-memory fallback
   const record = otpStore.get(key);
-
-  if (!record) {
-    return false;
-  }
-
-  // Check if expired
-  if (record.expiresAt.getTime() < Date.now()) {
+  if (!record) return false;
+  if (record.attempts >= MAX_ATTEMPTS) {
     otpStore.delete(key);
     return false;
   }
-
-  // Check if max attempts exceeded
-  if (record.attempts >= MAX_OTP_ATTEMPTS) {
-    otpStore.delete(key);
-    return false;
-  }
-
-  // Validate OTP
   if (record.otp !== otp) {
     record.attempts += 1;
     return false;
   }
 
-  // Clear OTP from memory after successful verification
   otpStore.delete(key);
   return true;
 }
 
-// Periodic cleanup of expired OTPs to prevent memory leaks
-setInterval(() => {
-  const now = Date.now();
-  for (const [key, record] of otpStore) {
-    if (record.expiresAt.getTime() < now) {
-      otpStore.delete(key);
+// In-memory cleanup interval (only runs when Redis is unavailable)
+if (!isRedisAvailable()) {
+  setInterval(() => {
+    const now = Date.now();
+    for (const [key, record] of otpStore.entries()) {
+      if (record.expiresAt.getTime() <= now) {
+        otpStore.delete(key);
+      }
     }
-  }
-}, 60_000); // Every 60 seconds
+  }, 60_000);
+}
