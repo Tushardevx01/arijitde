@@ -1,4 +1,4 @@
-import { randomInt, createHash } from 'crypto';
+import { randomInt, createHmac } from 'crypto';
 import { transporter } from './email';
 import { redis, isRedisAvailable } from '../lib/redis';
 
@@ -11,8 +11,14 @@ const otpStore = new Map<
 const OTP_TTL_SECONDS = 600; // 10 minutes
 const MAX_ATTEMPTS = 5;
 
+const _otpSecret = process.env.OTP_SECRET || process.env.JWT_SECRET;
+if (!_otpSecret) {
+  throw new Error('OTP_SECRET (or JWT_SECRET fallback) environment variable is missing');
+}
+const OTP_SECRET = _otpSecret;
+
 function hashOTP(otp: string): string {
-  return createHash('sha256').update(otp).digest('hex');
+  return createHmac('sha256', OTP_SECRET).update(otp).digest('hex');
 }
 
 export function generateOTP(): string {
@@ -48,8 +54,12 @@ export async function sendOTP(email: string, otp: string): Promise<void> {
   }
 }
 
-export async function saveOTP(email: string, otp: string): Promise<void> {
-  const key = `otp:${email.toLowerCase()}`;
+function otpKey(email: string, purpose: string): string {
+  return `otp:${email.toLowerCase()}:${purpose}`;
+}
+
+export async function saveOTP(email: string, otp: string, purpose: string): Promise<void> {
+  const key = otpKey(email, purpose);
   const otpHashed = hashOTP(otp);
   const expiresAt = Date.now() + OTP_TTL_SECONDS * 1000;
   const record = { otpHash: otpHashed, expiresAt, attempts: 0 };
@@ -61,8 +71,8 @@ export async function saveOTP(email: string, otp: string): Promise<void> {
   }
 }
 
-export async function deleteOTP(email: string): Promise<void> {
-  const key = `otp:${email.toLowerCase()}`;
+export async function deleteOTP(email: string, purpose: string): Promise<void> {
+  const key = otpKey(email, purpose);
   if (isRedisAvailable()) {
     await redis!.del(key);
   } else {
@@ -105,8 +115,8 @@ const OTP_VERIFY_SCRIPT = `
   return 1
 `;
 
-export async function verifyOTP(email: string, otp: string): Promise<boolean> {
-  const key = `otp:${email.toLowerCase()}`;
+export async function verifyOTP(email: string, otp: string, purpose: string): Promise<boolean> {
+  const key = otpKey(email, purpose);
 
   if (isRedisAvailable()) {
     const result = (await redis!.eval(
@@ -121,19 +131,16 @@ export async function verifyOTP(email: string, otp: string): Promise<boolean> {
   const record = otpStore.get(key);
   if (!record) return false;
 
-  // Check expiration first
   if (record.expiresAt.getTime() <= Date.now()) {
     otpStore.delete(key);
     return false;
   }
 
-  // Check max attempts
   if (record.attempts >= MAX_ATTEMPTS) {
     otpStore.delete(key);
     return false;
   }
 
-  // Compare hashed OTP
   if (record.otpHash !== hashOTP(otp)) {
     record.attempts += 1;
     return false;

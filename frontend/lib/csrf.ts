@@ -4,7 +4,15 @@ function getCsrfToken(): string {
   return match ? match.split('=')[1] : '';
 }
 
+async function ensureCsrfCookie(): Promise<void> {
+  if (getCsrfToken()) return;
+  // Bootstrap: hit the safe GET endpoint to set the cookie
+  await fetch('/api/csrf', { method: 'GET', credentials: 'same-origin' });
+}
+
 export async function csrfFetch(url: string, init?: RequestInit): Promise<Response> {
+  await ensureCsrfCookie();
+
   const headers = new Headers(init?.headers);
   const csrfToken = getCsrfToken();
   if (csrfToken && !headers.has('x-csrf-token')) {

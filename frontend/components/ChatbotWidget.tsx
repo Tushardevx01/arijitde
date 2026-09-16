@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
+import { csrfFetch } from '@/lib/csrf';
 import { X, Send, Loader2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { cn } from '@/lib/utils';
@@ -168,7 +169,7 @@ export default function ChatbotWidget({
         content: msg.text,
       }));
 
-      const res = await fetch(`/api/chat`, {
+      const res = await csrfFetch(`/api/chat`, {
         method: 'POST',
         headers,
         body: JSON.stringify({ messages: history }),

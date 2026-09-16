@@ -31,8 +31,7 @@ export function signRefreshToken(userId: string): string {
 
 export function verifyAccessToken(token: string): JWTPayload {
   const decoded = jwt.verify(token, SECRET) as any;
-  // Reject refresh tokens used as access tokens
-  if (decoded.type && decoded.type !== 'access') {
+  if (decoded.type !== 'access') {
     throw new jwt.JsonWebTokenError('Invalid token type');
   }
   return { userId: decoded.userId, email: decoded.email, role: decoded.role };
@@ -40,8 +39,7 @@ export function verifyAccessToken(token: string): JWTPayload {
 
 export function verifyRefreshToken(token: string): RefreshPayload {
   const decoded = jwt.verify(token, SECRET) as any;
-  // Reject access tokens used as refresh tokens
-  if (decoded.type && decoded.type !== 'refresh') {
+  if (decoded.type !== 'refresh') {
     throw new jwt.JsonWebTokenError('Invalid token type');
   }
   return { userId: decoded.userId, type: 'refresh' };

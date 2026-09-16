@@ -120,9 +120,9 @@ router.post('/refresh', async (req: Request, res: Response, next) => {
       return;
     }
 
-    // Find matching token in DB (compare hashes)
+    // Find matching unexpired token in DB (compare hashes)
     const storedTokens = await prisma.refreshToken.findMany({
-      where: { userId: decoded.userId },
+      where: { userId: decoded.userId, expiresAt: { gt: new Date() } },
       orderBy: { createdAt: 'desc' },
     });
 
@@ -141,8 +141,17 @@ router.post('/refresh', async (req: Request, res: Response, next) => {
       return;
     }
 
-    // Rotate: revoke old, issue new pair
-    await prisma.refreshToken.delete({ where: { id: matchedToken.id } });
+    // Atomic consumption: delete only if it still exists (race-safe)
+    const deletedCount = await prisma.$executeRaw`
+      DELETE FROM "RefreshToken" WHERE id = ${matchedToken.id} AND "userId" = ${decoded.userId}
+    `;
+
+    if (deletedCount === 0) {
+      // Token was already consumed by a concurrent request — revoke all sessions
+      await prisma.refreshToken.deleteMany({ where: { userId: decoded.userId } });
+      res.status(401).json({ success: false, error: 'Refresh token reuse detected — all sessions terminated' });
+      return;
+    }
 
     const user = await prisma.user.findUnique({ where: { id: decoded.userId } });
     if (!user) {
@@ -198,11 +207,11 @@ router.post('/otp/send', otpSendLimiter, async (req, res, next) => {
 
     const otp = generateOTP();
 
-    await saveOTP(formattedEmail, otp);
+    await saveOTP(formattedEmail, otp, 'login');
     try {
       await sendOTP(formattedEmail, otp);
     } catch {
-      await deleteOTP(formattedEmail);
+      await deleteOTP(formattedEmail, 'login');
       res.status(500).json({ success: false, error: 'Failed to send OTP email' });
       return;
     }
@@ -237,7 +246,7 @@ router.post('/otp/verify', authLimiter, async (req, res, next) => {
     );
     const formattedEmail = email.toLowerCase();
 
-    const isValid = await verifyOTP(formattedEmail, otp);
+    const isValid = await verifyOTP(formattedEmail, otp, 'login');
     if (!isValid) {
       res.status(400).json({
         success: false,
@@ -810,11 +819,11 @@ router.post('/password/reset/send-otp', otpSendLimiter, async (req, res, next) =
     }
 
     const otp = generateOTP();
-    await saveOTP(formattedEmail, otp);
+    await saveOTP(formattedEmail, otp, 'password_reset');
     try {
       await sendOTP(formattedEmail, otp);
     } catch {
-      await deleteOTP(formattedEmail);
+      await deleteOTP(formattedEmail, 'password_reset');
       res.status(500).json({ success: false, error: 'Failed to send OTP email' });
       return;
     }
@@ -844,7 +853,7 @@ router.post('/password/reset/confirm', authLimiter, async (req, res, next) => {
     const { email, otp, password } = confirmResetSchema.parse(req.body);
     const formattedEmail = email.toLowerCase();
 
-    const isValid = await verifyOTP(formattedEmail, otp);
+    const isValid = await verifyOTP(formattedEmail, otp, 'password_reset');
     if (!isValid) {
       res.status(400).json({
         success: false,
@@ -942,11 +951,11 @@ router.post('/activation/send-otp', otpSendLimiter, async (req, res, next) => {
 
     // 4. Send OTP
     const otp = generateOTP();
-    await saveOTP(formattedEmail, otp);
+    await saveOTP(formattedEmail, otp, 'activation');
     try {
       await sendOTP(formattedEmail, otp);
     } catch {
-      await deleteOTP(formattedEmail);
+      await deleteOTP(formattedEmail, 'activation');
       res.status(500).json({ success: false, error: 'Failed to send OTP email' });
       return;
     }
@@ -998,7 +1007,7 @@ router.post('/activation/verify-otp', authLimiter, async (req, res, next) => {
     }
 
     // 2. Verify OTP
-    const isValid = await verifyOTP(formattedEmail, otp);
+    const isValid = await verifyOTP(formattedEmail, otp, 'activation');
     if (!isValid) {
       res.status(400).json({
         success: false,
@@ -1132,11 +1141,11 @@ router.post('/client/otp/send', otpSendLimiter, async (req, res, next) => {
     }
 
     const otp = generateOTP();
-    await saveOTP(formattedEmail, otp);
+    await saveOTP(formattedEmail, otp, 'client_login');
     try {
       await sendOTP(formattedEmail, otp);
     } catch {
-      await deleteOTP(formattedEmail);
+      await deleteOTP(formattedEmail, 'client_login');
       res.status(500).json({ success: false, error: 'Failed to send OTP email' });
       return;
     }
@@ -1161,7 +1170,7 @@ router.post('/client/otp/verify', authLimiter, async (req, res, next) => {
     const { email, otp } = clientOtpVerifySchema.parse(req.body);
     const formattedEmail = email.toLowerCase();
 
-    const isValid = await verifyOTP(formattedEmail, otp);
+    const isValid = await verifyOTP(formattedEmail, otp, 'client_login');
     if (!isValid) {
       res.status(400).json({
         success: false,

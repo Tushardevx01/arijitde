@@ -133,6 +133,21 @@ app.get('/api/health', (req, res) => {
   });
 });
 
+// CSRF bootstrap — safe GET that sets the csrf_token cookie
+import crypto from 'crypto';
+app.get('/api/csrf', (req, res) => {
+  if (!req.cookies?.csrf_token) {
+    res.cookie('csrf_token', crypto.randomBytes(32).toString('hex'), {
+      httpOnly: false,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      path: '/',
+      maxAge: 24 * 60 * 60 * 1000,
+    });
+  }
+  res.json({ success: true });
+});
+
 // F7: Serve uploaded files behind authentication instead of publicly
 app.use(
   '/uploads',

@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from "react";
+import { csrfFetch } from '@/lib/csrf';
 import { 
   LogOut, 
   LayoutGrid, 
@@ -998,7 +999,7 @@ export default function ClientDashboard() {
 
     setAuthenticating(true);
     try {
-      const res = await fetch(`/api/auth/pan/login`, {
+      const res = await csrfFetch(`/api/auth/pan/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ pan: trimmedPan, password: clientPassword }),
@@ -1042,7 +1043,7 @@ export default function ClientDashboard() {
 
     setAuthenticating(true);
     try {
-      const res = await fetch(`/api/auth/password/reset/send-otp`, {
+      const res = await csrfFetch(`/api/auth/password/reset/send-otp`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email: trimmedEmail }),
@@ -1082,7 +1083,7 @@ export default function ClientDashboard() {
 
     setAuthenticating(true);
     try {
-      const res = await fetch(`/api/auth/password/reset/confirm`, {
+      const res = await csrfFetch(`/api/auth/password/reset/confirm`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email: trimmedEmail, otp: trimmedOtp, password: trimmedPass }),
