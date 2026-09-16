@@ -251,6 +251,38 @@
   }
 }
 
+/* =====================================================
+   Mobile Scroll White-Square Fix
+   iOS Safari / Chrome Mobile: backdrop-blur on fixed
+   elements creates white rectangle artifacts during
+   scroll. Force GPU compositing via translate3d to
+   prevent this repaint bug.
+   ===================================================== */
+@media (max-width: 768px) {
+  /* Force GPU layer on all blur/filter elements to prevent
+     white-square compositing artifacts during scroll */
+  .backdrop-inner,
+  .backdrop-inner > *,
+  [class*="blur-"] {
+    -webkit-transform: translateZ(0);
+    transform: translateZ(0);
+    -webkit-backface-visibility: hidden;
+    backface-visibility: hidden;
+  }
+
+  /* Prevent animated background orbs from causing
+     white-square repaint issues on mobile scroll */
+  .orb-1,
+  .orb-2,
+  .orb-3 {
+    -webkit-transform: translateZ(0) !important;
+    transform: translateZ(0) !important;
+    -webkit-backface-visibility: hidden;
+    backface-visibility: hidden;
+    will-change: transform;
+  }
+}
+
 @keyframes text-shimmer {
   0% {
     background-position: 200% center;
