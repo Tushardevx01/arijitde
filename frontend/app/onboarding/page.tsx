@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
+import { csrfFetch } from '@/lib/csrf';
 import SoftBoxBlurBg from '@/components/SoftBoxBlurBg';
 import GradualBlur from '@/components/GradualBlur';
 import {
@@ -180,7 +181,7 @@ export default function Onboarding() {
     const idToken = response.credential;
 
     try {
-      const res = await fetch(`/api/auth/google`, {
+      const res = await csrfFetch(`/api/auth/google`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ token: idToken }),
@@ -233,7 +234,7 @@ export default function Onboarding() {
       setLoading(true);
 
       try {
-        const res = await fetch(`/api/auth/admin/login`, {
+        const res = await csrfFetch(`/api/auth/admin/login`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ email, password }),
@@ -282,7 +283,7 @@ export default function Onboarding() {
 
     try {
       // Step 1: Call endpoint to send OTP
-      const res = await fetch(`/api/auth/otp/send`, {
+      const res = await csrfFetch(`/api/auth/otp/send`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -320,7 +321,7 @@ export default function Onboarding() {
 
     try {
       // Step 2: Call endpoint to verify OTP
-      const res = await fetch(`/api/auth/otp/verify`, {
+      const res = await csrfFetch(`/api/auth/otp/verify`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -374,7 +375,7 @@ export default function Onboarding() {
     setLoading(true);
 
     try {
-      const res = await fetch(`/api/auth/client/otp/send`, {
+      const res = await csrfFetch(`/api/auth/client/otp/send`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email: trimmedEmail }),
@@ -410,7 +411,7 @@ export default function Onboarding() {
     setLoading(true);
 
     try {
-      const res = await fetch(`/api/auth/client/otp/verify`, {
+      const res = await csrfFetch(`/api/auth/client/otp/verify`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email: trimmedEmail, otp: trimmedOtp }),
@@ -446,7 +447,7 @@ export default function Onboarding() {
     setLoading(true);
 
     try {
-      const res = await fetch(`/api/auth/client/pan/verify`, {
+      const res = await csrfFetch(`/api/auth/client/pan/verify`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

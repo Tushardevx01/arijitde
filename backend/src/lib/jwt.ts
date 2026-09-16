@@ -20,7 +20,7 @@ interface RefreshPayload {
 }
 
 export function signAccessToken(payload: JWTPayload): string {
-  return jwt.sign(payload, SECRET, { expiresIn: '15m' });
+  return jwt.sign({ ...payload, type: 'access' }, SECRET, { expiresIn: '15m' });
 }
 
 export function signRefreshToken(userId: string): string {
@@ -30,11 +30,21 @@ export function signRefreshToken(userId: string): string {
 }
 
 export function verifyAccessToken(token: string): JWTPayload {
-  return jwt.verify(token, SECRET) as unknown as JWTPayload;
+  const decoded = jwt.verify(token, SECRET) as any;
+  // Reject refresh tokens used as access tokens
+  if (decoded.type && decoded.type !== 'access') {
+    throw new jwt.JsonWebTokenError('Invalid token type');
+  }
+  return { userId: decoded.userId, email: decoded.email, role: decoded.role };
 }
 
 export function verifyRefreshToken(token: string): RefreshPayload {
-  return jwt.verify(token, SECRET) as unknown as RefreshPayload;
+  const decoded = jwt.verify(token, SECRET) as any;
+  // Reject access tokens used as refresh tokens
+  if (decoded.type && decoded.type !== 'refresh') {
+    throw new jwt.JsonWebTokenError('Invalid token type');
+  }
+  return { userId: decoded.userId, type: 'refresh' };
 }
 
 // Legacy alias — existing code uses signToken / verifyToken

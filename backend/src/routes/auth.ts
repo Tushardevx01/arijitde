@@ -4,7 +4,7 @@ import { z } from 'zod';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import rateLimit from 'express-rate-limit';
-import { generateOTP, sendOTP, saveOTP, verifyOTP } from '../services/otp';
+import { generateOTP, sendOTP, saveOTP, verifyOTP, deleteOTP } from '../services/otp';
 import { prisma } from '../lib/prisma';
 import { signToken, signAccessToken, signRefreshToken, verifyRefreshToken } from '../lib/jwt';
 import { authMiddleware } from '../middleware/auth';
@@ -74,7 +74,7 @@ const authLimiter = rateLimit({
 
 const REFRESH_ENABLED = process.env.ENABLE_REFRESH_TOKENS === 'true';
 
-async function createTokenPair(user: { id: string; email: string | null; role: any }) {
+async function createTokenPair(user: { id: string; email: string | null; role: any }, res: Response) {
   if (REFRESH_ENABLED) {
     const accessToken = signAccessToken({ userId: user.id, email: user.email ?? '', role: user.role });
     const refreshToken = signRefreshToken(user.id);
@@ -83,6 +83,14 @@ async function createTokenPair(user: { id: string; email: string | null; role: a
 
     await prisma.refreshToken.create({
       data: { token: hashedToken, userId: user.id, expiresAt },
+    });
+
+    res.cookie('refreshToken', refreshToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      path: '/',
+      maxAge: 30 * 24 * 60 * 60 * 1000,
     });
 
     return { token: accessToken, refreshToken };
@@ -142,16 +150,7 @@ router.post('/refresh', async (req: Request, res: Response, next) => {
       return;
     }
 
-    const tokens = await createTokenPair(user);
-
-    // Set refresh token in httpOnly cookie
-    res.cookie('refreshToken', tokens.refreshToken, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
-      maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
-      path: '/',
-    });
+    const tokens = await createTokenPair(user, res);
 
     res.json({ success: true, data: { token: tokens.token } });
   } catch (error) {
@@ -199,13 +198,14 @@ router.post('/otp/send', otpSendLimiter, async (req, res, next) => {
 
     const otp = generateOTP();
 
-    // Store in-memory
-    saveOTP(formattedEmail, otp);
-
-    // Send email in background to prevent blocking the response
-    sendOTP(formattedEmail, otp).catch((err) =>
-      console.error('Failed to send OTP in background:', err),
-    );
+    await saveOTP(formattedEmail, otp);
+    try {
+      await sendOTP(formattedEmail, otp);
+    } catch {
+      await deleteOTP(formattedEmail);
+      res.status(500).json({ success: false, error: 'Failed to send OTP email' });
+      return;
+    }
 
     res.json({
       success: true,
@@ -237,7 +237,7 @@ router.post('/otp/verify', authLimiter, async (req, res, next) => {
     );
     const formattedEmail = email.toLowerCase();
 
-    const isValid = verifyOTP(formattedEmail, otp);
+    const isValid = await verifyOTP(formattedEmail, otp);
     if (!isValid) {
       res.status(400).json({
         success: false,
@@ -320,7 +320,7 @@ router.post('/otp/verify', authLimiter, async (req, res, next) => {
       }
     }
 
-    const tokens = await createTokenPair(user);
+    const tokens = await createTokenPair(user, res);
 
     res.json({
       success: true,
@@ -371,7 +371,7 @@ router.post('/admin/login', passwordLoginLimiter, async (req, res, next) => {
       return;
     }
 
-    const tokens = await createTokenPair(user);
+    const tokens = await createTokenPair(user, res);
 
     res.json({
       success: true,
@@ -586,7 +586,7 @@ router.post('/google', authLimiter, async (req, res, next) => {
       }
     }
 
-    const tokens = await createTokenPair(user);
+    const tokens = await createTokenPair(user, res);
 
     res.json({
       success: true,
@@ -764,7 +764,7 @@ router.post('/pan/login', passwordLoginLimiter, async (req, res, next) => {
       return;
     }
 
-    const tokens = await createTokenPair(user);
+    const tokens = await createTokenPair(user, res);
 
     res.json({
       success: true,
@@ -810,11 +810,14 @@ router.post('/password/reset/send-otp', otpSendLimiter, async (req, res, next) =
     }
 
     const otp = generateOTP();
-    saveOTP(formattedEmail, otp);
-    // Send email in background to prevent blocking the response
-    sendOTP(formattedEmail, otp).catch((err) =>
-      console.error('Failed to send OTP in background:', err),
-    );
+    await saveOTP(formattedEmail, otp);
+    try {
+      await sendOTP(formattedEmail, otp);
+    } catch {
+      await deleteOTP(formattedEmail);
+      res.status(500).json({ success: false, error: 'Failed to send OTP email' });
+      return;
+    }
 
     res.json({
       success: true,
@@ -841,7 +844,7 @@ router.post('/password/reset/confirm', authLimiter, async (req, res, next) => {
     const { email, otp, password } = confirmResetSchema.parse(req.body);
     const formattedEmail = email.toLowerCase();
 
-    const isValid = verifyOTP(formattedEmail, otp);
+    const isValid = await verifyOTP(formattedEmail, otp);
     if (!isValid) {
       res.status(400).json({
         success: false,
@@ -939,11 +942,14 @@ router.post('/activation/send-otp', otpSendLimiter, async (req, res, next) => {
 
     // 4. Send OTP
     const otp = generateOTP();
-    saveOTP(formattedEmail, otp);
-    // Send email in background to prevent blocking the response
-    sendOTP(formattedEmail, otp).catch((err) =>
-      console.error('Failed to send OTP in background:', err),
-    );
+    await saveOTP(formattedEmail, otp);
+    try {
+      await sendOTP(formattedEmail, otp);
+    } catch {
+      await deleteOTP(formattedEmail);
+      res.status(500).json({ success: false, error: 'Failed to send OTP email' });
+      return;
+    }
 
     res.json({
       success: true,
@@ -992,7 +998,7 @@ router.post('/activation/verify-otp', authLimiter, async (req, res, next) => {
     }
 
     // 2. Verify OTP
-    const isValid = verifyOTP(formattedEmail, otp);
+    const isValid = await verifyOTP(formattedEmail, otp);
     if (!isValid) {
       res.status(400).json({
         success: false,
@@ -1076,7 +1082,7 @@ router.post('/activation/verify-otp', authLimiter, async (req, res, next) => {
       return updatedUser;
     });
 
-    const tokens = await createTokenPair(user);
+    const tokens = await createTokenPair(user, res);
 
     res.json({
       success: true,
@@ -1126,12 +1132,14 @@ router.post('/client/otp/send', otpSendLimiter, async (req, res, next) => {
     }
 
     const otp = generateOTP();
-    saveOTP(formattedEmail, otp);
-
-    // Send OTP email in background
-    sendOTP(formattedEmail, otp).catch((err) =>
-      console.error('Failed to send client OTP in background:', err),
-    );
+    await saveOTP(formattedEmail, otp);
+    try {
+      await sendOTP(formattedEmail, otp);
+    } catch {
+      await deleteOTP(formattedEmail);
+      res.status(500).json({ success: false, error: 'Failed to send OTP email' });
+      return;
+    }
 
     res.json({
       success: true,
@@ -1153,7 +1161,7 @@ router.post('/client/otp/verify', authLimiter, async (req, res, next) => {
     const { email, otp } = clientOtpVerifySchema.parse(req.body);
     const formattedEmail = email.toLowerCase();
 
-    const isValid = verifyOTP(formattedEmail, otp);
+    const isValid = await verifyOTP(formattedEmail, otp);
     if (!isValid) {
       res.status(400).json({
         success: false,
@@ -1331,7 +1339,7 @@ router.post('/client/pan/verify', authLimiter, async (req, res, next) => {
       },
     });
 
-    const tokens = await createTokenPair(user);
+    const tokens = await createTokenPair(user, res);
 
     res.json({
       success: true,

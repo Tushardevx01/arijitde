@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { csrfFetch } from '@/lib/csrf';
 import {
   X,
   Mail,
@@ -85,7 +86,7 @@ export default function BookCallModal({ isOpen, onClose }: BookCallModalProps) {
     setLoading(true);
 
     try {
-      const response = await fetch(
+      const response = await csrfFetch(
         `/api/leads/book-session-public`,
         {
           method: 'POST',

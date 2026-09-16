@@ -1,15 +1,19 @@
-import { randomInt } from 'crypto';
+import { randomInt, createHash } from 'crypto';
 import { transporter } from './email';
 import { redis, isRedisAvailable } from '../lib/redis';
 
 // In-memory fallback for local dev without Redis
 const otpStore = new Map<
   string,
-  { otp: string; expiresAt: Date; attempts: number }
+  { otpHash: string; expiresAt: Date; attempts: number }
 >();
 
 const OTP_TTL_SECONDS = 600; // 10 minutes
 const MAX_ATTEMPTS = 5;
+
+function hashOTP(otp: string): string {
+  return createHash('sha256').update(otp).digest('hex');
+}
 
 export function generateOTP(): string {
   return randomInt(100000, 999999).toString();
@@ -38,50 +42,99 @@ export async function sendOTP(email: string, otp: string): Promise<void> {
     await transporter.sendMail(mailOptions);
   } catch (err) {
     console.error('Failed to send OTP email:', err);
-    throw new Error('Failed to send OTP. Please check your email configuration.');
+    throw new Error(
+      'Failed to send OTP. Please check your email configuration.',
+    );
   }
 }
 
 export async function saveOTP(email: string, otp: string): Promise<void> {
   const key = `otp:${email.toLowerCase()}`;
-  const record = { otp, expiresAt: new Date(Date.now() + OTP_TTL_SECONDS * 1000), attempts: 0 };
+  const otpHashed = hashOTP(otp);
+  const expiresAt = Date.now() + OTP_TTL_SECONDS * 1000;
+  const record = { otpHash: otpHashed, expiresAt, attempts: 0 };
 
   if (isRedisAvailable()) {
     await redis!.setex(key, OTP_TTL_SECONDS, JSON.stringify(record));
   } else {
-    otpStore.set(key, record);
+    otpStore.set(key, { otpHash: otpHashed, expiresAt: new Date(expiresAt), attempts: 0 });
   }
 }
+
+export async function deleteOTP(email: string): Promise<void> {
+  const key = `otp:${email.toLowerCase()}`;
+  if (isRedisAvailable()) {
+    await redis!.del(key);
+  } else {
+    otpStore.delete(key);
+  }
+}
+
+// Lua script for atomic OTP verification on Redis
+// Returns: 1 = success, -1 = wrong OTP (attempts incremented), 0 = expired/missing/max attempts
+const OTP_VERIFY_SCRIPT = `
+  local key = KEYS[1]
+  local submittedHash = ARGV[1]
+  local now = tonumber(ARGV[2])
+  local maxAttempts = tonumber(ARGV[3])
+
+  local raw = redis.call('GET', key)
+  if not raw then return 0 end
+
+  local record = cjson.decode(raw)
+
+  local expiresAt = tonumber(record.expiresAt)
+  if expiresAt <= now then
+    redis.call('DEL', key)
+    return 0
+  end
+
+  if record.attempts >= maxAttempts then
+    redis.call('DEL', key)
+    return 0
+  end
+
+  if record.otpHash ~= submittedHash then
+    record.attempts = record.attempts + 1
+    local remainingTtl = math.max(1, math.floor((expiresAt - now) / 1000))
+    redis.call('SETEX', key, remainingTtl, cjson.encode(record))
+    return -1
+  end
+
+  redis.call('DEL', key)
+  return 1
+`;
 
 export async function verifyOTP(email: string, otp: string): Promise<boolean> {
   const key = `otp:${email.toLowerCase()}`;
 
   if (isRedisAvailable()) {
-    const raw = await redis!.get<string>(key);
-    if (!raw) return false;
-
-    const record = typeof raw === 'string' ? JSON.parse(raw) : raw;
-    if (record.attempts >= MAX_ATTEMPTS) {
-      await redis!.del(key);
-      return false;
-    }
-    if (record.otp !== otp) {
-      await redis!.set(key, JSON.stringify({ ...record, attempts: record.attempts + 1 }), { ex: OTP_TTL_SECONDS });
-      return false;
-    }
-
-    await redis!.del(key);
-    return true;
+    const result = (await redis!.eval(
+      OTP_VERIFY_SCRIPT,
+      [key],
+      [hashOTP(otp), Date.now().toString(), MAX_ATTEMPTS.toString()],
+    )) as number;
+    return result === 1;
   }
 
-  // In-memory fallback
+  // In-memory fallback (local dev only)
   const record = otpStore.get(key);
   if (!record) return false;
+
+  // Check expiration first
+  if (record.expiresAt.getTime() <= Date.now()) {
+    otpStore.delete(key);
+    return false;
+  }
+
+  // Check max attempts
   if (record.attempts >= MAX_ATTEMPTS) {
     otpStore.delete(key);
     return false;
   }
-  if (record.otp !== otp) {
+
+  // Compare hashed OTP
+  if (record.otpHash !== hashOTP(otp)) {
     record.attempts += 1;
     return false;
   }

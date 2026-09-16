@@ -1,5 +1,6 @@
 import crypto from 'crypto';
 import type { Request, Response, NextFunction } from 'express';
+import { verifyAccessToken } from '../lib/jwt';
 
 const CSRF_COOKIE = 'csrf_token';
 const CSRF_HEADER = 'x-csrf-token';
@@ -25,10 +26,15 @@ export function csrfMiddleware(req: Request, res: Response, next: NextFunction):
     return next();
   }
 
-  // Exempt requests with Bearer token (API clients / mobile)
+  // Exempt requests with a VALID Bearer token (authenticated API clients)
   const authHeader = req.headers.authorization;
   if (authHeader?.startsWith('Bearer ')) {
-    return next();
+    try {
+      verifyAccessToken(authHeader.substring(7));
+      return next(); // Valid access token — skip CSRF
+    } catch {
+      // Invalid/expired token — fall through to CSRF validation
+    }
   }
 
   // Validate double-submit cookie
