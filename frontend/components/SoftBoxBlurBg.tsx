@@ -46,17 +46,7 @@ export default function SoftBoxBlurBg() {
             transform: translate(25px, 35px) scale(1.1);
           }
         }
-        @keyframes wave-drift {
-          0% {
-            transform: translateX(0) translateZ(0) scaleY(1);
-          }
-          50% {
-            transform: translateX(-25%) translateZ(0) scaleY(1.05);
-          }
-          100% {
-            transform: translateX(-50%) translateZ(0) scaleY(1);
-          }
-        }
+
         .orb-1 {
           animation: float-orb-1 18s ease-in-out infinite;
         }
@@ -120,49 +110,7 @@ export default function SoftBoxBlurBg() {
         />
       </div>
 
-      {/* 4. Elegant Glowing Financial Wave Curves (Bottom Edge) */}
-      <div className="absolute bottom-0 left-0 right-0 h-[220px] md:h-[280px] overflow-hidden pointer-events-none opacity-40">
-        <svg
-          viewBox="0 0 1440 280"
-          fill="none"
-          xmlns="http://www.w3.org/2000/svg"
-          className="absolute bottom-0 w-full h-full preserve-3d"
-          preserveAspectRatio="none"
-        >
-          <defs>
-            <linearGradient
-              id="fintechWaveGrad1"
-              x1="0%"
-              y1="0%"
-              x2="100%"
-              y2="0%"
-            >
-              <stop offset="0%" stopColor="rgba(147, 197, 253, 0.4)" />
-              <stop offset="50%" stopColor="rgba(186, 230, 253, 0.6)" />
-              <stop offset="100%" stopColor="rgba(147, 197, 253, 0.2)" />
-            </linearGradient>
-            <linearGradient
-              id="fintechWaveGrad2"
-              x1="0%"
-              y1="0%"
-              x2="100%"
-              y2="0%"
-            >
-              <stop offset="0%" stopColor="rgba(255, 255, 255, 0.6)" />
-              <stop offset="50%" stopColor="rgba(191, 219, 254, 0.4)" />
-              <stop offset="100%" stopColor="rgba(255, 255, 255, 0.2)" />
-            </linearGradient>
-          </defs>
-          <path
-            d="M0,160 C320,240 420,80 720,150 C1020,220 1180,100 1440,160 L1440,280 L0,280 Z"
-            fill="url(#fintechWaveGrad1)"
-          />
-          <path
-            d="M0,190 C360,110 520,250 860,180 C1140,120 1280,210 1440,170 L1440,280 L0,280 Z"
-            fill="url(#fintechWaveGrad2)"
-          />
-        </svg>
-      </div>
+
 
       {/* 5. Subtle Vignette Depth Layer */}
       <div
