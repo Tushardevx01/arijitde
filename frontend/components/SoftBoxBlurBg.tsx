@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 
+/** Renders the animated ambient backdrop behind the home page content. */
 export default function SoftBoxBlurBg() {
   const [mounted, setMounted] = useState(false);
 
