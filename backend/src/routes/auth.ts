@@ -4,10 +4,22 @@ import { z } from 'zod';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import rateLimit from 'express-rate-limit';
-import { generateOTP, sendOTP, saveOTP, verifyOTP, deleteOTP } from '../services/otp';
+import { createHash } from 'crypto';
+import {
+  generateOTP,
+  sendOTP,
+  saveOTP,
+  verifyOTP,
+  deleteOTP,
+} from '../services/otp';
 import { prisma } from '../lib/prisma';
-import { signToken, signAccessToken, signRefreshToken, verifyRefreshToken } from '../lib/jwt';
-import { authMiddleware } from '../middleware/auth';
+import {
+  signToken,
+  signAccessToken,
+  signRefreshToken,
+  verifyRefreshToken,
+} from '../lib/jwt';
+import { authMiddleware, optionalAuthMiddleware } from '../middleware/auth';
 import type { AuthenticatedRequest } from '../middleware/auth';
 import { OAuth2Client } from 'google-auth-library';
 
@@ -68,21 +80,29 @@ const authLimiter = rateLimit({
   legacyHeaders: false,
   message: {
     success: false,
-    error: 'Too many authentication attempts. Please wait 15 minutes and try again.',
+    error:
+      'Too many authentication attempts. Please wait 15 minutes and try again.',
   },
 });
 
 const REFRESH_ENABLED = process.env.ENABLE_REFRESH_TOKENS === 'true';
 
-async function createTokenPair(user: { id: string; email: string | null; role: any }, res: Response) {
+async function createTokenPair(
+  user: { id: string; email: string | null; role: any },
+  res: Response,
+) {
   if (REFRESH_ENABLED) {
-    const accessToken = signAccessToken({ userId: user.id, email: user.email ?? '', role: user.role });
+    const accessToken = signAccessToken({
+      userId: user.id,
+      email: user.email ?? '',
+      role: user.role,
+    });
     const refreshToken = signRefreshToken(user.id);
-    const hashedToken = await bcrypt.hash(refreshToken, 10);
+    const tokenHash = createHash('sha256').update(refreshToken).digest('hex');
     const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000); // 30 days
 
     await prisma.refreshToken.create({
-      data: { token: hashedToken, userId: user.id, expiresAt },
+      data: { token: tokenHash, userId: user.id, expiresAt },
     });
 
     res.cookie('refreshToken', refreshToken, {
@@ -95,14 +115,22 @@ async function createTokenPair(user: { id: string; email: string | null; role: a
 
     return { token: accessToken, refreshToken };
   }
-  return { token: signToken({ userId: user.id, email: user.email ?? '', role: user.role }) };
+  return {
+    token: signToken({
+      userId: user.id,
+      email: user.email ?? '',
+      role: user.role,
+    }),
+  };
 }
 
 // POST /api/auth/refresh
 router.post('/refresh', async (req: Request, res: Response, next) => {
   try {
     if (!REFRESH_ENABLED) {
-      res.status(404).json({ success: false, error: 'Refresh tokens not enabled' });
+      res
+        .status(404)
+        .json({ success: false, error: 'Refresh tokens not enabled' });
       return;
     }
 
@@ -116,44 +144,64 @@ router.post('/refresh', async (req: Request, res: Response, next) => {
     try {
       decoded = verifyRefreshToken(refreshToken);
     } catch {
-      res.status(401).json({ success: false, error: 'Invalid or expired refresh token' });
+      res
+        .status(401)
+        .json({ success: false, error: 'Invalid or expired refresh token' });
       return;
     }
 
-    // Find matching unexpired token in DB (compare hashes)
-    const storedTokens = await prisma.refreshToken.findMany({
-      where: { userId: decoded.userId, expiresAt: { gt: new Date() } },
-      orderBy: { createdAt: 'desc' },
+    const tokenHash = createHash('sha256').update(refreshToken).digest('hex');
+
+    // Direct lookup by token hash (O(1) instead of scanning all tokens)
+    const matchedToken = await prisma.refreshToken.findUnique({
+      where: { token: tokenHash },
     });
 
-    let matchedToken: typeof storedTokens[0] | null = null;
-    for (const stored of storedTokens) {
-      if (await bcrypt.compare(refreshToken, stored.token)) {
-        matchedToken = stored;
-        break;
-      }
+    if (!matchedToken || matchedToken.userId !== decoded.userId) {
+      // Token not found or user mismatch — revoke all for this user (possible theft)
+      await prisma.refreshToken.deleteMany({
+        where: { userId: decoded.userId },
+      });
+      res.clearCookie('refreshToken', { path: '/' });
+      res.status(401).json({
+        success: false,
+        error: 'Refresh token revoked — all sessions terminated',
+      });
+      return;
     }
 
-    if (!matchedToken) {
-      // Token not found or already revoked — revoke all for this user (possible theft)
-      await prisma.refreshToken.deleteMany({ where: { userId: decoded.userId } });
-      res.status(401).json({ success: false, error: 'Refresh token revoked — all sessions terminated' });
+    if (matchedToken.expiresAt < new Date()) {
+      // Token expired — clean up and reject
+      await prisma.refreshToken.delete({ where: { id: matchedToken.id } });
+      res.clearCookie('refreshToken', { path: '/' });
+      res.status(401).json({ success: false, error: 'Refresh token expired' });
       return;
     }
 
     // Atomic consumption: delete only if it still exists (race-safe)
-    const deletedCount = await prisma.$executeRaw`
-      DELETE FROM "RefreshToken" WHERE id = ${matchedToken.id} AND "userId" = ${decoded.userId}
-    `;
-
+    const { count: deletedCount } = await prisma.refreshToken.deleteMany({
+      where: { id: matchedToken.id, userId: decoded.userId },
+    });
     if (deletedCount === 0) {
       // Token was already consumed by a concurrent request — revoke all sessions
-      await prisma.refreshToken.deleteMany({ where: { userId: decoded.userId } });
-      res.status(401).json({ success: false, error: 'Refresh token reuse detected — all sessions terminated' });
+      await prisma.refreshToken.deleteMany({
+        where: { userId: decoded.userId },
+      });
+      res.status(401).json({
+        success: false,
+        error: 'Refresh token reuse detected — all sessions terminated',
+      });
       return;
     }
 
-    const user = await prisma.user.findUnique({ where: { id: decoded.userId } });
+    // Periodic cleanup: delete expired refresh tokens (run on each refresh)
+    await prisma.refreshToken.deleteMany({
+      where: { expiresAt: { lt: new Date() } },
+    });
+
+    const user = await prisma.user.findUnique({
+      where: { id: decoded.userId },
+    });
     if (!user) {
       res.status(401).json({ success: false, error: 'User not found' });
       return;
@@ -168,17 +216,31 @@ router.post('/refresh', async (req: Request, res: Response, next) => {
 });
 
 // POST /api/auth/logout
-router.post('/logout', authMiddleware, async (req: AuthenticatedRequest, res: Response, next) => {
-  try {
-    const userId = req.user!.id;
-    // Revoke all refresh tokens for this user
-    await prisma.refreshToken.deleteMany({ where: { userId } });
-    res.clearCookie('refreshToken', { path: '/' });
-    res.json({ success: true, message: 'Logged out successfully' });
-  } catch (error) {
-    next(error);
-  }
-});
+router.post(
+  '/logout',
+  optionalAuthMiddleware,
+  async (req: AuthenticatedRequest, res: Response, next) => {
+    try {
+      const refreshToken = req.cookies?.refreshToken;
+      if (refreshToken) {
+        const tokenHash = createHash('sha256')
+          .update(refreshToken)
+          .digest('hex');
+        await prisma.refreshToken.deleteMany({ where: { token: tokenHash } });
+      }
+      // Revoke every session only when the client asks for it explicitly
+      if (req.user && req.body?.allDevices === true) {
+        await prisma.refreshToken.deleteMany({
+          where: { userId: req.user.id },
+        });
+      }
+      res.clearCookie('refreshToken', { path: '/' });
+      res.json({ success: true, message: 'Logged out successfully' });
+    } catch (error) {
+      next(error);
+    }
+  },
+);
 
 // 1. POST /api/auth/otp/send
 const sendOtpSchema = z.object({
@@ -211,8 +273,10 @@ router.post('/otp/send', otpSendLimiter, async (req, res, next) => {
     try {
       await sendOTP(formattedEmail, otp);
     } catch {
-      await deleteOTP(formattedEmail, 'login');
-      res.status(500).json({ success: false, error: 'Failed to send OTP email' });
+      await deleteOTP(formattedEmail, otp, 'login');
+      res
+        .status(500)
+        .json({ success: false, error: 'Failed to send OTP email' });
       return;
     }
 
@@ -656,14 +720,6 @@ router.get(
   },
 );
 
-// 5. POST /api/auth/logout
-router.post('/logout', (req, res) => {
-  res.json({
-    success: true,
-    data: { message: 'logged out' },
-  });
-});
-
 // 6. POST /api/auth/phone
 const updatePhoneSchema = z.object({
   phone: z.string().min(10, 'Phone number must be at least 10 digits'),
@@ -799,43 +855,49 @@ const sendResetOtpSchema = z.object({
   email: z.string().email('Invalid email address'),
 });
 
-router.post('/password/reset/send-otp', otpSendLimiter, async (req, res, next) => {
-  try {
-    const { email } = sendResetOtpSchema.parse(req.body);
-    const formattedEmail = email.toLowerCase();
-
-    // Verify user exists
-    const user = await prisma.user.findFirst({
-      where: { email: formattedEmail },
-    });
-
-    if (!user) {
-      res.status(404).json({
-        success: false,
-        error:
-          'Unable to process your request. Please verify your email or contact support.',
-      });
-      return;
-    }
-
-    const otp = generateOTP();
-    await saveOTP(formattedEmail, otp, 'password_reset');
+router.post(
+  '/password/reset/send-otp',
+  otpSendLimiter,
+  async (req, res, next) => {
     try {
-      await sendOTP(formattedEmail, otp);
-    } catch {
-      await deleteOTP(formattedEmail, 'password_reset');
-      res.status(500).json({ success: false, error: 'Failed to send OTP email' });
-      return;
-    }
+      const { email } = sendResetOtpSchema.parse(req.body);
+      const formattedEmail = email.toLowerCase();
 
-    res.json({
-      success: true,
-      data: { message: 'OTP sent to email successfully' },
-    });
-  } catch (error) {
-    next(error);
-  }
-});
+      // Verify user exists
+      const user = await prisma.user.findFirst({
+        where: { email: formattedEmail },
+      });
+
+      if (!user) {
+        res.status(404).json({
+          success: false,
+          error:
+            'Unable to process your request. Please verify your email or contact support.',
+        });
+        return;
+      }
+
+      const otp = generateOTP();
+      await saveOTP(formattedEmail, otp, 'password_reset');
+      try {
+        await sendOTP(formattedEmail, otp);
+      } catch {
+        await deleteOTP(formattedEmail, otp, 'password_reset');
+        res
+          .status(500)
+          .json({ success: false, error: 'Failed to send OTP email' });
+        return;
+      }
+
+      res.json({
+        success: true,
+        data: { message: 'OTP sent to email successfully' },
+      });
+    } catch (error) {
+      next(error);
+    }
+  },
+);
 
 // 9. POST /api/auth/password/reset/confirm
 const confirmResetSchema = z.object({
@@ -875,6 +937,10 @@ router.post('/password/reset/confirm', authLimiter, async (req, res, next) => {
     await prisma.user.update({
       where: { id: userToUpdate.id },
       data: { password: hashedPassword },
+    });
+
+    await prisma.refreshToken.deleteMany({
+      where: { userId: userToUpdate.id },
     });
 
     res.json({
@@ -955,8 +1021,10 @@ router.post('/activation/send-otp', otpSendLimiter, async (req, res, next) => {
     try {
       await sendOTP(formattedEmail, otp);
     } catch {
-      await deleteOTP(formattedEmail, 'activation');
-      res.status(500).json({ success: false, error: 'Failed to send OTP email' });
+      await deleteOTP(formattedEmail, otp, 'activation');
+      res
+        .status(500)
+        .json({ success: false, error: 'Failed to send OTP email' });
       return;
     }
 
@@ -1091,6 +1159,10 @@ router.post('/activation/verify-otp', authLimiter, async (req, res, next) => {
       return updatedUser;
     });
 
+    await prisma.refreshToken.deleteMany({
+      where: { userId: user.id },
+    });
+
     const tokens = await createTokenPair(user, res);
 
     res.json({
@@ -1145,8 +1217,10 @@ router.post('/client/otp/send', otpSendLimiter, async (req, res, next) => {
     try {
       await sendOTP(formattedEmail, otp);
     } catch {
-      await deleteOTP(formattedEmail, 'client_login');
-      res.status(500).json({ success: false, error: 'Failed to send OTP email' });
+      await deleteOTP(formattedEmail, otp, 'client_login');
+      res
+        .status(500)
+        .json({ success: false, error: 'Failed to send OTP email' });
       return;
     }
 

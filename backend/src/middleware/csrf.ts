@@ -10,7 +10,11 @@ function generateToken(): string {
   return crypto.randomBytes(32).toString('hex');
 }
 
-export function csrfMiddleware(req: Request, res: Response, next: NextFunction): void {
+export function csrfMiddleware(
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): void {
   if (SAFE_METHODS.includes(req.method)) {
     // Set a new CSRF token in a cookie for safe methods
     if (!req.cookies?.[CSRF_COOKIE]) {
@@ -29,12 +33,10 @@ export function csrfMiddleware(req: Request, res: Response, next: NextFunction):
   // Exempt requests with a VALID Bearer token (authenticated API clients)
   const authHeader = req.headers.authorization;
   if (authHeader?.startsWith('Bearer ')) {
-    try {
-      verifyAccessToken(authHeader.substring(7));
-      return next(); // Valid access token — skip CSRF
-    } catch {
-      // Invalid/expired token — fall through to CSRF validation
-    }
+    // Any Bearer-authenticated request is immune to CSRF (custom headers
+    // cannot be forged cross-site); let the auth middleware classify
+    // invalid/expired tokens with a proper 401 instead of a CSRF error.
+    return next();
   }
 
   // Validate double-submit cookie

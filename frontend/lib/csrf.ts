@@ -1,16 +1,27 @@
 function getCsrfToken(): string {
   if (typeof document === 'undefined') return '';
-  const match = document.cookie.split('; ').find((row) => row.startsWith('csrf_token='));
-  return match ? match.split('=')[1] : '';
+  const match = document.cookie
+    .split('; ')
+    .find((row) => row.startsWith('csrf_token='));
+  return match ? match.slice('csrf_token='.length) : '';
 }
 
 async function ensureCsrfCookie(): Promise<void> {
   if (getCsrfToken()) return;
   // Bootstrap: hit the safe GET endpoint to set the cookie
-  await fetch('/api/csrf', { method: 'GET', credentials: 'same-origin' });
+  const res = await fetch('/api/csrf', {
+    method: 'GET',
+    credentials: 'same-origin',
+  });
+  if (!res.ok) {
+    throw new Error('Failed to initialize CSRF token');
+  }
 }
 
-export async function csrfFetch(url: string, init?: RequestInit): Promise<Response> {
+export async function csrfFetch(
+  url: string,
+  init?: RequestInit,
+): Promise<Response> {
   await ensureCsrfCookie();
 
   const headers = new Headers(init?.headers);
