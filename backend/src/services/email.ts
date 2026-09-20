@@ -48,7 +48,10 @@ const transporter = nodemailer.createTransport({
   },
 });
 
-const templateDir = path.join(__dirname, 'templates', 'emails');
+const templateDir = fs.existsSync(path.resolve(__dirname, '../templates'))
+  ? path.resolve(__dirname, '../templates')
+  : path.resolve(__dirname, '../../src/templates');
+
 const templatesEnv = nunjucks.configure(templateDir, {
   autoescape: true,
   noCache: process.env.NODE_ENV !== 'production',
@@ -83,7 +86,7 @@ export async function sendTemplatedEmail({ to, subject, template, data }: EmailO
     throw new Error(`Invalid email template: ${template}. Allowed: ${Array.from(ALLOWED_TEMPLATES).join(', ')}`);
   }
   try {
-    const html = templatesEnv.render(`${template}.njk`, {
+    const html = templatesEnv.render(`emails/${template}.njk`, {
       ...data,
       year: new Date().getFullYear(),
     });
