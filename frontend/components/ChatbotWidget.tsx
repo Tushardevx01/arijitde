@@ -281,11 +281,12 @@ export default function ChatbotWidget({
   return (
     <div
       className={cn(
-        'fixed bottom-6 right-6 z-40 flex flex-col items-end transition-all duration-500 ease-out',
+        'fixed bottom-6 right-6 z-40 flex flex-col items-end transition-all duration-500 ease-out isolate',
         isFooterIntersecting
           ? 'opacity-0 translate-y-10 scale-90 pointer-events-none'
           : 'opacity-100 translate-y-0 scale-100 pointer-events-auto',
       )}
+      style={{ transform: 'translateZ(0)', willChange: 'transform' }}
     >
       {/* Chatbot Modal */}
       <AnimatePresence>
@@ -483,7 +484,7 @@ export default function ChatbotWidget({
           'relative w-16 h-16 rounded-full flex items-center justify-center cursor-pointer select-none transition-colors duration-200 shadow-[0_12px_32px_rgba(58,130,147,0.25)]',
           isChatOpen
             ? 'bg-neutral-900 text-white'
-            : 'bg-white/85 backdrop-blur-xl border border-white/70',
+            : 'bg-white border border-white/70',
         )}
       >
         <AnimatePresence mode="wait" initial={false}>

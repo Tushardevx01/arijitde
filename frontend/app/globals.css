@@ -167,42 +167,14 @@
     }
 }
 
-/* Fixed page background layer — the single source of the page gradient.
-   A layer sized to the layout viewport (`inset: 0`) cannot cover the whole screen
-   on mobile: Chrome/Android keeps the layout viewport at the toolbar-visible
-   height for a moment after the toolbar retracts, and iOS Safari reveals a strip
-   *below* the layout viewport when the bottom bar expands or the page overscrolls
-   past its end. Either way the bare canvas shows through as a grey/white band.
-   So the layer bleeds below the viewport on mobile, and the glow is re-anchored up
-   by the same amount. Bleeding downwards only is deliberate: it leaves the glow's
-   centre and its farthest-corner radius exactly where they were, so the on-screen
-   rendering is unchanged. The bleed is 0 on desktop, which has no collapsing UI. */
 .page-backdrop {
-  --backdrop-bleed: 0px;
-  bottom: calc(-1 * var(--backdrop-bleed));
-  height: auto;
-  min-height: 100lvh;
   background-color: var(--bg-base);
   background-image: radial-gradient(
-    circle at 50% calc(100% - var(--backdrop-bleed)),
+    circle at 50% 100%,
     var(--bg-glow-start) 0%,
     var(--bg-glow-mid) 45%,
     var(--bg-glow-end) 85%
   );
-}
-
-@media (max-width: 1279px), (hover: none) {
-  .page-backdrop {
-    --backdrop-bleed: 8rem;
-  }
-}
-
-
-
-/* Decorative children stay aligned to the real viewport box, not the bled one. */
-.page-backdrop > .backdrop-inner {
-  bottom: var(--backdrop-bleed);
-  height: auto;
 }
 
 .font-chillax {
@@ -276,6 +248,38 @@
 @media (max-width: 400px) {
   .gradual-blur-page {
     display: none !important;
+  }
+}
+
+/* =====================================================
+   Mobile Scroll White-Square Fix
+   iOS Safari / Chrome Mobile: backdrop-blur on fixed
+   elements creates white rectangle artifacts during
+   scroll. Force GPU compositing via translate3d to
+   prevent this repaint bug.
+   ===================================================== */
+@media (max-width: 768px) {
+  /* Force GPU layer on all blur/filter elements to prevent
+     white-square compositing artifacts during scroll */
+  .backdrop-inner,
+  .backdrop-inner > *,
+  [class*="blur-"] {
+    -webkit-transform: translateZ(0);
+    transform: translateZ(0);
+    -webkit-backface-visibility: hidden;
+    backface-visibility: hidden;
+  }
+
+  /* Prevent animated background orbs from causing
+     white-square repaint issues on mobile scroll */
+  .orb-1,
+  .orb-2,
+  .orb-3 {
+    -webkit-transform: translateZ(0) !important;
+    transform: translateZ(0) !important;
+    -webkit-backface-visibility: hidden;
+    backface-visibility: hidden;
+    will-change: transform;
   }
 }
 

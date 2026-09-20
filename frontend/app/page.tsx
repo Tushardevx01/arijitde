@@ -1145,49 +1145,7 @@ export default function Home() {
 
       <ScrollTextReveal />
 
-      {/* Interactive Chatbot Promo Section */}
-      <div className="w-full relative z-10 pt-4 pb-16 px-6 overflow-hidden">
-        {/* Ambient backing glow */}
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[450px] h-[450px] rounded-full bg-[radial-gradient(circle,rgba(56,189,248,0.06)_0%,transparent_70%)] pointer-events-none select-none" />
 
-        <ScrollBlurReveal className="w-full max-w-5xl mx-auto">
-          <div className="w-full p-8 md:p-12 bg-white/45 backdrop-blur-2xl border border-white/70 rounded-[32px] shadow-[0_20px_50px_rgba(0,0,0,0.04)] flex flex-col md:flex-row justify-between items-start md:items-center gap-10 relative z-10">
-            <div className="space-y-4 max-w-xl text-left">
-              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-primary/15 bg-primary/5 text-xs font-semibold text-primary font-mono select-none">
-                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                <span>INSTANT INTELLIGENCE</span>
-              </div>
-              <h2 className="text-3xl md:text-4xl font-bold tracking-tight text-primary font-chillax leading-snug">
-                Meet Virtual Arijit : Real-Time Insights, Zero Waiting.
-              </h2>
-              <p className="text-muted-foreground text-sm leading-relaxed font-sans font-medium">
-                Have questions regarding portfolio diagnostics, asset rebalancing, expense ratio optimization, or structured distribution? Ask Virtual Arijit for immediate institutional guidance.
-              </p>
-            </div>
-
-            <div className="w-full md:w-auto shrink-0 flex flex-col items-center justify-center p-6 bg-white/60 backdrop-blur-2xl border border-white/80 rounded-2xl md:min-w-[280px] shadow-sm text-center relative">
-              <div className="mb-3 relative flex items-center justify-center">
-                <div className="absolute inset-0 rounded-full bg-[#3A8293]/15 blur-xl pointer-events-none" />
-                <AIOrbFace
-                  size={76}
-                  state="idle"
-                  gaze={true}
-                  aria-label="Virtual Arijit Assistant Preview"
-                />
-              </div>
-              <span className="text-base font-bold text-primary font-chillax">Try Virtual Arijit Now</span>
-
-              <button
-                onClick={() => setIsChatOpen(true)}
-                className="w-full mt-4 py-3.5 px-6 bg-primary hover:bg-primary/95 text-primary-foreground font-bold text-xs rounded-xl flex items-center justify-center gap-2 transition duration-200 cursor-pointer shadow-md uppercase tracking-wider"
-              >
-                <Bot className="w-4 h-4" />
-                <span>Launch Assistant</span>
-              </button>
-            </div>
-          </div>
-        </ScrollBlurReveal>
-      </div>
 
       {/* Investor Archetype Diagnostic Quiz Section */}
       <div className="w-full relative z-10 py-16 px-6">
