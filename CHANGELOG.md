@@ -5,6 +5,65 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3.2] - 2026-09-20
+
+### Fixed
+
+- **Global 401 Unauthorized on Unauthenticated Endpoints (`backend/src/index.ts`)**:
+  - *What changed:* Replaced the global `app.use(authMiddleware)` with `app.use(optionalAuthMiddleware)`.
+  - *Why:* `authMiddleware` throws `ApiError.unauthorized('Access token is missing or invalid')` whenever a request lacks a valid JWT Bearer header or cookie. Applying it as a top-level Express middleware rejected all unauthenticated and public requests (such as `GET /api/csrf`, `POST /api/auth/admin/login`, `POST /api/auth/otp/send`, and Google OAuth callback) with a 401 error before those route handlers could ever execute.
+  - *Security & Risk Assessment:* **Zero Security Risk.** All sensitive and protected routes (`/api/admin/*`, `/api/portfolio/*`, `/api/assess/*`, `/api/leads/*`, etc.) continue to enforce strict authentication via their explicit, route-level `authMiddleware` and `adminMiddleware`. `optionalAuthMiddleware` parses and validates JWTs when present (populating `req.user` for rate-limiter exemption) without prematurely blocking public routes.
+
+- **Missing Admin Password Login Endpoint (`backend/src/routes/auth/auth.password.ts`)**:
+  - *What changed:* Restored the `POST /api/auth/admin/login` endpoint with Zod input validation (`adminLoginSchema`), brute-force rate limiting (`passwordLoginLimiter`: 10 attempts / 15 min), role verification (`role: 'ADMIN'`), and bcrypt hash comparison.
+  - *Why:* The frontend admin login flow at `/onboarding` calls `POST /api/auth/admin/login` with email and password. This endpoint was omitted during an earlier modularization of the auth routes into separate files.
+  - *Security & Risk Assessment:* **Zero Risk / Security Hardened.** Requests are strictly rate-limited against credential stuffing. Passwords are verified using constant-time `bcrypt.compare`. Generic error messages prevent user enumeration. Only accounts with `role: 'ADMIN'` can log in.
+
+- **Leads Sub-route Parameter Conflict (`backend/src/routes/leads.ts`)**:
+  - *What changed:* Moved parameterized dynamic routes (`GET /:id` and `DELETE /:id`) to the bottom of `leads.ts`, after all static sub-routes (`/my-bookings`, `/my-sessions`, `/availability`, `/slots`, etc.).
+  - *Why:* In Express, routes are matched in declaration order. Because `/:id` was declared before `/my-bookings` and `/my-sessions`, requests like `GET /api/leads/my-bookings` had their URL segment `'my-bookings'` captured as the `id` parameter. This triggered a Zod UUID validation failure (`Invalid lead ID format`) and returned a 400 error instead of reaching the actual bookings handler.
+  - *Security & Risk Assessment:* **Zero Risk.** All permission checks and role verifications remain unchanged. This strictly fixes route resolution order.
+
+- **Admin Router Missing Leads Route Mount (`backend/src/routes/admin.ts`)**:
+  - *What changed:* Mounted `leadsRouter` at `/leads` inside `adminRouter`.
+  - *Why:* Frontend administrative screens making requests to `/api/admin/leads/*` were returning 404 Not Found.
+  - *Security & Risk Assessment:* **Zero Risk.** Requests through `/api/admin/leads` inherit both `authMiddleware` and `adminMiddleware` applied at the `adminRouter` root, ensuring only authenticated administrators can access these endpoints.
+
+- **Email Service Template Lookup & Production Build Packaging (`backend/src/services/email.ts`, `backend/package.json`)**:
+  - *What changed:* Dynamic fallback resolution for the Nunjucks templates folder (`src/templates` vs `dist/templates`) and added `cp -r src/templates dist/templates` to the `build` script.
+  - *Why:* When running the backend via compiled JavaScript in production (`dist/`), Nunjucks failed to locate template files (e.g. `emails/otp.njk`), which threw runtime errors and prevented OTP and notification emails from being dispatched.
+  - *Security & Risk Assessment:* **Zero Risk.** The existing `ALLOWED_TEMPLATES` whitelist is preserved, preventing arbitrary path traversal or template injection.
+
+- **Next.js Rewrite API Prefix Compatibility (`backend/src/index.ts`)**:
+  - *What changed:* Mounted routers to both `/api/v1/*` and `/api/*`.
+  - *Why:* Frontend requests proxied via Next.js rewrites target `/api/*`, while the backend previously only listened on `/api/v1/*`, leading to 404 errors on several API calls.
+  - *Security & Risk Assessment:* **Zero Risk.** The identical security middleware and route handlers apply to both prefixes.
+
+- **Missing Relational Database Timestamps (`Neon PostgreSQL`)**:
+  - *What changed:* Added `createdAt TIMESTAMP WITHOUT TIME ZONE DEFAULT NOW()` columns to `PortfolioRow` and `Client` tables via idempotent migrations (`ADD COLUMN IF NOT EXISTS`).
+  - *Why:* Prisma queries in `admin.ts` (`prisma.user.findMany` with relations) failed with database error `P2022 (column PortfolioRow.createdAt does not exist)`, crashing the Admin Dashboard user list with a 500 error.
+  - *Security & Risk Assessment:* **Zero Risk.** Uses non-destructive default values without dropping or modifying any existing records.
+
+- **TypeScript Compilation Configuration (`backend/tsconfig.json`)**:
+  - *What changed:* Removed `"jest"` and `"@types/jest"` from compilerOptions `types`, keeping `types: ["node"]`.
+  - *Why:* Jest types were not present in the runtime environment dependencies, which caused `tsc` to throw `Cannot find type definition file for 'jest'` during `npm run build`, blocking the deployment pipeline.
+  - *Security & Risk Assessment:* **Zero Risk.** Build-time type definition configuration only; produces no change to runtime JavaScript logic.
+
+- **AMFI Service Import & Rate Limiter Deprecation Warning (`backend/src/index.ts`)**:
+  - *What changed:*
+    1. Removed unused `import * as Sentry from '@sentry/node'` (Sentry is initialized through `./lib/sentry`).
+    2. Replaced dynamic `import('./services/amfiService.js')` with `require('./services/amfiService')` during startup AMFI scheme validation.
+    3. Added `validate: { keyGeneratorIpFallback: false }` to the global `rateLimit` configuration.
+  - *Why:* The explicit `.js` extension in the TypeScript dynamic import caused `ERR_MODULE_NOT_FOUND` under CommonJS `ts-node` runtime execution. Removing the unused Sentry import eliminates compiler warnings. The rate-limiter validation flag silences express-rate-limit v8 deprecation warnings when resolving client IPs behind reverse proxies (Railway and Cloudflare).
+  - *Security & Risk Assessment:* **Zero Risk.** AMFI benchmark validation and rate-limiting behaviors operate exactly as intended with zero bypasses.
+
+- **Unused Auth Middleware Imports Cleanup (`backend/src/routes/auth/auth.password.ts`)**:
+  - *What changed:* Removed unused `authMiddleware` and `AuthenticatedRequest` imports.
+  - *Why:* Neither import was referenced in this file; cleaning up unused symbols prevents dead code accumulation and compiler warnings.
+  - *Security & Risk Assessment:* **Zero Risk.** Purely clean code maintenance.
+
+---
+
 ## [1.3.1] - 2026-09-20
 
 ### Fixed

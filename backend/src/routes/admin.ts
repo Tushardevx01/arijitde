@@ -13,6 +13,7 @@ import { Role, Prisma, LeadStatus } from '@prisma/client';
 import { cachedQuery, cacheKeys, cacheTTL, invalidatePattern } from '../lib/cache';
 import { ApiError } from '../lib/api-error';
 import { auditUpdate, auditCreate, auditDelete } from '../services/audit';
+import leadsRouter from './leads';
 
 const router = Router();
 
@@ -147,6 +148,7 @@ function parseAvgHoldingDays(val: unknown): number | null {
 // Apply auth and admin middleware to all routes in this router
 router.use(authMiddleware);
 router.use(adminMiddleware);
+router.use('/leads', leadsRouter);
 
 // 1. GET /api/admin/stats
 router.get('/stats', async (req: AuthenticatedRequest, res: Response, next) => {

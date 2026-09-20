@@ -4,13 +4,21 @@ import { z } from 'zod';
 import bcrypt from 'bcryptjs';
 import { generateOTP, sendOTP, saveOTP, verifyOTP, deleteOTP } from '../../services/otp';
 import { prisma } from '../../lib/prisma';
-import { authMiddleware } from '../../middleware/auth';
-import type { AuthenticatedRequest } from '../../middleware/auth';
 import { ApiError } from '../../lib/api-error';
 import rateLimit from 'express-rate-limit';
 import { SECURITY_CONFIG } from '../../config/security';
 
+import { createTokenPair } from './auth.tokens';
+
 const router = Router();
+
+const passwordLoginLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { success: false, error: 'Too many login attempts. Please wait 15 minutes and try again.' },
+});
 
 const otpSendLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
@@ -26,6 +34,56 @@ const authLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
   message: { success: false, error: 'Too many authentication attempts. Please wait 15 minutes and try again.' },
+});
+
+// POST /api/auth/admin/login
+const adminLoginSchema = z.object({
+  email: z.string().email('Invalid email address'),
+  password: z.string().min(1, 'Password is required'),
+});
+
+router.post('/admin/login', passwordLoginLimiter, async (req: Request, res: Response, next) => {
+  try {
+    const { email, password } = adminLoginSchema.parse(req.body);
+    const formattedEmail = email.toLowerCase();
+
+    const invalidCredentials = {
+      success: false,
+      error: 'Invalid administrator email or password.',
+    };
+
+    const user = await prisma.user.findFirst({
+      where: { email: formattedEmail, role: 'ADMIN' },
+    });
+
+    if (!user || !user.password) {
+      res.status(401).json(invalidCredentials);
+      return;
+    }
+
+    const passwordMatches = await bcrypt.compare(password, user.password);
+    if (!passwordMatches) {
+      res.status(401).json(invalidCredentials);
+      return;
+    }
+
+    const tokens = await createTokenPair(user, res);
+
+    res.json({
+      success: true,
+      data: {
+        token: tokens.token,
+        user: {
+          id: user.id,
+          email: user.email,
+          name: user.name,
+          role: user.role,
+        },
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
 });
 
 // POST /api/auth/password/reset/send-otp
