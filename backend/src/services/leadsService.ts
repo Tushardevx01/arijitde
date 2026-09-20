@@ -1,8 +1,7 @@
-import { PrismaClient, LeadStatus, Role } from '@prisma/client';
+import { LeadStatus, Role } from '@prisma/client';
+import { prisma } from '../lib/prisma';
 import { ApiError } from '../lib/api-error';
 import { invalidatePattern, cacheKeys, cacheTTL, cachedQuery } from '../lib/cache';
-
-const prisma = new PrismaClient();
 
 export interface CreateLeadData {
   userId: string;
