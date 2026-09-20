@@ -1,7 +1,6 @@
-import { PrismaClient, AuditAction, Prisma } from '@prisma/client';
+import { AuditAction, Prisma } from '@prisma/client';
+import { prisma } from '../lib/prisma';
 import { logger } from '../lib/logger';
-
-const prisma = new PrismaClient();
 
 export interface AuditLogOptions {
   tableName: string;

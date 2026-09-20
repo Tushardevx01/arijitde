@@ -1,12 +1,11 @@
 import { PrismaClient } from '@prisma/client';
+import { prisma } from '../lib/prisma';
 import jwt from 'jsonwebtoken';
 import { ApiError } from '../lib/api-error';
 
-const prisma = new PrismaClient();
-
-const PAN_VERIFICATION_SECRET = process.env.PAN_VERIFICATION_SECRET!;
+const PAN_VERIFICATION_SECRET: string = process.env.PAN_VERIFICATION_SECRET || process.env.JWT_SECRET || '';
 if (!PAN_VERIFICATION_SECRET) {
-  throw new Error('PAN_VERIFICATION_SECRET environment variable is required for PAN verification tokens.');
+  throw new Error('PAN_VERIFICATION_SECRET or JWT_SECRET environment variable is required for PAN verification tokens.');
 }
 
 export interface ClientAccountInfo {
@@ -34,7 +33,7 @@ export async function findClientAccountsByEmail(
     where: { email: { equals: email, mode: 'insensitive' } },
   });
 
-  return clientRecords.map((c) => {
+  return clientRecords.map((c: any) => {
     const pan = c.pan || '';
     const panMasked =
       pan.length >= 4

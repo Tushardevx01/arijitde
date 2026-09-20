@@ -5,6 +5,26 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3.1] - 2026-09-20
+
+### Fixed
+
+- **Railway Deployment Crash (`leadsService.ts`)**: Replaced `new PrismaClient()` with the shared singleton from `lib/prisma`. The project uses `@prisma/adapter-pg` (PostgreSQL driver adapter), which requires `PrismaClient` to be constructed with explicit adapter options. Calling `new PrismaClient()` with no arguments threw `PrismaClientInitializationError` immediately when `leads.js` was loaded, causing the Railway container to crash on every startup attempt.
+
+- **Railway Deployment Crash (`audit.ts`)**: Same fix as above — `audit.ts` also had its own `new PrismaClient()` with no arguments. In addition to the startup crash, this would have opened a second unnecessary connection pool to the database, wasting Neon's limited connections.
+
+- **Railway Deployment Crash (`pan.ts`)**: Same Prisma singleton fix. Also hardened `PAN_VERIFICATION_SECRET` reading — the old code used a TypeScript `!` non-null assertion (`process.env.PAN_VERIFICATION_SECRET!`), which would silently be `undefined` at runtime if the env var was missing, causing cryptic JWT errors. Now explicitly falls back to `JWT_SECRET` with a clear error message if neither is set.
+
+- **Unreachable `ENABLE_REFRESH_TOKENS` Default (`index.ts`)**: The default value for `ENABLE_REFRESH_TOKENS` was set **after** the required-env-var validation loop that calls `process.exit(1)`. This meant the default was never reached in production if the var was absent. Moved both `ENABLE_REFRESH_TOKENS` and `PAN_VERIFICATION_SECRET` defaults **before** the validation block so they are in place before any exit check runs.
+
+- **Frontend Production Build Failure (`tsconfig.json`)**: Added `playwright.config.ts` and `tests/` to the TypeScript `exclude` list. After a `git pull`, the newly added `playwright.config.ts` was being type-checked by Next.js during `npm run build`. Since `@playwright/test` is not installed in production, TypeScript failed with `Cannot find module '@playwright/test'`, blocking the entire build. Playwright is a testing tool and should not be part of the production TypeScript compilation.
+
+### Changed
+
+- **Prisma Client Architecture**: `leadsService.ts`, `audit.ts`, and `pan.ts` now all use the shared `prisma` singleton from `lib/prisma` instead of creating their own `PrismaClient` instances. This ensures the `@prisma/adapter-pg` connection pool is shared correctly across all services.
+
+---
+
 ## [1.3.0] - 2026-09-20
 
 ### Added

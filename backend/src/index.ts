@@ -35,6 +35,14 @@ import { prisma } from './lib/prisma';
 import { redis, isRedisAvailable } from './lib/redis';
 import { logger } from './lib/logger';
 
+// Defaults and fallbacks before verification
+if (process.env.ENABLE_REFRESH_TOKENS === undefined) {
+  process.env.ENABLE_REFRESH_TOKENS = 'true';
+}
+if (!process.env.PAN_VERIFICATION_SECRET && process.env.JWT_SECRET) {
+  process.env.PAN_VERIFICATION_SECRET = process.env.JWT_SECRET;
+}
+
 // Verify required environment variables
 const requiredEnvVars = [
   'DATABASE_URL',
@@ -52,11 +60,6 @@ for (const envVar of requiredEnvVars) {
     logger.fatal({ envVar }, `Missing required environment variable: ${envVar}`);
     process.exit(1);
   }
-}
-
-// ENABLE_REFRESH_TOKENS defaults to 'true' if not set
-if (process.env.ENABLE_REFRESH_TOKENS === undefined) {
-  process.env.ENABLE_REFRESH_TOKENS = 'true';
 }
 
 // Warn if GMAIL_USER is missing, since nodemailer relies on it
