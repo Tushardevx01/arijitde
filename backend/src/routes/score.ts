@@ -5,6 +5,8 @@ import { prisma } from '../lib/prisma';
 import { authMiddleware } from '../middleware/auth';
 import type { AuthenticatedRequest } from '../middleware/auth';
 import { calculateScore } from '../services/scoring';
+import { cachedQuery, cacheKeys, cacheTTL, invalidatePattern } from '../lib/cache';
+import { ApiError } from '../lib/api-error';
 
 const router = Router();
 
@@ -30,20 +32,12 @@ router.post(
       });
 
       if (!portfolio) {
-        res.status(404).json({
-          success: false,
-          error: 'Portfolio not found',
-        });
-        return;
+        return next(ApiError.notFound('Portfolio not found'));
       }
 
       // Verify ownership
       if (portfolio.userId !== req.user!.id) {
-        res.status(403).json({
-          success: false,
-          error: 'Forbidden: You do not own this portfolio',
-        });
-        return;
+        return next(ApiError.forbidden('You do not own this portfolio'));
       }
 
       // Run scoring engine (async due to AMFI API calls in efficiency)
@@ -78,6 +72,9 @@ router.post(
         },
       });
 
+      // Invalidate score cache
+      await invalidatePattern('score:portfolio:');
+
       res.json({
         success: true,
         data: score,
@@ -100,28 +97,28 @@ router.get(
     try {
       const { id } = getScoreParamsSchema.parse(req.params);
 
-      const score = await prisma.score.findUnique({
-        where: { id },
-        include: {
-          portfolio: true,
+      const cacheKey = cacheKeys.portfolioScores(id);
+
+      const score = await cachedQuery(
+        cacheKey,
+        async () => {
+          return prisma.score.findUnique({
+            where: { id },
+            include: {
+              portfolio: true,
+            },
+          });
         },
-      });
+        { ttl: cacheTTL.medium }
+      );
 
       if (!score) {
-        res.status(404).json({
-          success: false,
-          error: 'Score not found',
-        });
-        return;
+        return next(ApiError.notFound('Score not found'));
       }
 
       // Verify ownership via portfolio
       if (score.portfolio.userId !== req.user!.id) {
-        res.status(403).json({
-          success: false,
-          error: 'Forbidden: You do not own this score',
-        });
-        return;
+        return next(ApiError.forbidden('You do not own this score'));
       }
 
       res.json({

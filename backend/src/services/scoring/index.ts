@@ -4,6 +4,7 @@ import { scoreDimension as scoreAssetAllocation } from './assetAllocation';
 import { scoreDimension as scoreDiversification } from './diversification';
 import { scoreDimension as scoreDiscipline } from './discipline';
 import { scoreDimension as scoreEfficiency } from './efficiency';
+import { SCORING_CONSTANTS } from './constants';
 
 export interface AssessmentContext {
   age: number;
@@ -47,31 +48,29 @@ export async function calculateScore(
   if (rows.length === 0) {
     const goalResult = scoreGoalAlignment(rows, assessment);
     const qScore = goalResult.score;
-    const scaledTotal = Math.min(97, Math.max(2, qScore * 5));
+    const scaledTotal = Math.min(
+      SCORING_CONSTANTS.MAX_DISPLAY_SCORE,
+      Math.max(SCORING_CONSTANTS.MIN_DISPLAY_SCORE, qScore * SCORING_CONSTANTS.EMPTY_PORTFOLIO_MULTIPLIER),
+    );
 
     let tag: ScoreTag;
     if (
       !assessment.goal ||
-      assessment.goal === Goal.EXPLORING ||
-      assessment.goal === Goal.NOT_SURE_YET
+      SCORING_CONSTANTS.SPECIAL_GOALS.includes(assessment.goal)
     ) {
       tag = ScoreTag.NEEDS_STRUCTURING;
-    } else if (scaledTotal >= 75) {
+    } else if (scaledTotal >= SCORING_CONSTANTS.TAG_THRESHOLDS.ALIGNED) {
       tag = ScoreTag.ALIGNED;
-    } else if (scaledTotal >= 60) {
+    } else if (scaledTotal >= SCORING_CONSTANTS.TAG_THRESHOLDS.MODERATE) {
       tag = ScoreTag.MODERATE;
     } else {
       tag = ScoreTag.NEEDS_REVIEW;
     }
 
     const selectedInsights = [...goalResult.insights];
-    const generalInsights = [
-      'Portfolio: Review and rebalance your portfolio annually to maintain your target risk profile',
-      'Portfolio: Maintain an emergency fund separate from your market-linked investments',
-      'Portfolio: Review your investment goals periodically to account for any lifecycle changes',
-    ];
+    const generalInsights = SCORING_CONSTANTS.GENERAL_INSIGHTS;
     let padIdx = 0;
-    while (selectedInsights.length < 3) {
+    while (selectedInsights.length < SCORING_CONSTANTS.MIN_INSIGHTS) {
       selectedInsights.push(
         generalInsights[padIdx++] ||
           'Portfolio: Stay invested for the long-term to beat inflation',
@@ -87,7 +86,7 @@ export async function calculateScore(
       efficiency: qScore,
       tag,
       insights: {
-        textInsights: selectedInsights.slice(0, 5),
+        textInsights: selectedInsights.slice(0, SCORING_CONSTANTS.MAX_INSIGHTS),
         comparison: null,
       },
     };
@@ -111,57 +110,36 @@ export async function calculateScore(
     effResult.score;
 
   // Clamp display score: min 2, max 97
-  const total = Math.min(97, Math.max(2, rawTotal));
+  const total = Math.min(
+    SCORING_CONSTANTS.MAX_DISPLAY_SCORE,
+    Math.max(SCORING_CONSTANTS.MIN_DISPLAY_SCORE, rawTotal),
+  );
 
   // Determine Tag
   let tag: ScoreTag;
   if (
     !assessment.goal ||
-    assessment.goal === Goal.EXPLORING ||
-    assessment.goal === Goal.NOT_SURE_YET
+    SCORING_CONSTANTS.SPECIAL_GOALS.includes(assessment.goal)
   ) {
     tag = ScoreTag.NEEDS_STRUCTURING;
-  } else if (total >= 75) {
+  } else if (total >= SCORING_CONSTANTS.TAG_THRESHOLDS.ALIGNED) {
     tag = ScoreTag.ALIGNED;
-  } else if (total >= 60) {
+  } else if (total >= SCORING_CONSTANTS.TAG_THRESHOLDS.MODERATE) {
     tag = ScoreTag.MODERATE;
   } else {
     tag = ScoreTag.NEEDS_REVIEW;
   }
 
   // Collect all insights from all dimensions, prioritize by dimension score (worst first)
-  const dimensions = [
-    {
-      name: 'Goal Alignment',
-      score: goalResult.score,
-      maxScore: 20,
-      insights: goalResult.insights,
-    },
-    {
-      name: 'Asset Allocation',
-      score: assetResult.score,
-      maxScore: 20,
-      insights: assetResult.insights,
-    },
-    {
-      name: 'Diversification',
-      score: divResult.score,
-      maxScore: 20,
-      insights: divResult.insights,
-    },
-    {
-      name: 'Discipline',
-      score: discResult.score,
-      maxScore: 20,
-      insights: discResult.insights,
-    },
-    {
-      name: 'Efficiency',
-      score: effResult.score,
-      maxScore: 20,
-      insights: effResult.insights,
-    },
-  ];
+  const dimensions = SCORING_CONSTANTS.DIMENSIONS.map((dim, index) => {
+    const result = [goalResult, assetResult, divResult, discResult, effResult][index];
+    return {
+      name: dim.name,
+      score: result.score,
+      maxScore: dim.maxScore,
+      insights: result.insights,
+    };
+  });
 
   // Sort by score ascending (worst-scoring dimensions first)
   dimensions.sort((a, b) => a.score - b.score);
@@ -170,19 +148,15 @@ export async function calculateScore(
   for (const dim of dimensions) {
     for (const insight of dim.insights) {
       selectedInsights.push(insight);
-      if (selectedInsights.length === 5) break;
+      if (selectedInsights.length === SCORING_CONSTANTS.MAX_INSIGHTS) break;
     }
-    if (selectedInsights.length === 5) break;
+    if (selectedInsights.length === SCORING_CONSTANTS.MAX_INSIGHTS) break;
   }
 
   // Pad to at least 3 insights
-  const generalInsights = [
-    'Portfolio: Review and rebalance your portfolio annually to maintain your target risk profile',
-    'Portfolio: Maintain an emergency fund separate from your market-linked investments',
-    'Portfolio: Review your investment goals periodically to account for any lifecycle changes',
-  ];
+  const generalInsights = SCORING_CONSTANTS.GENERAL_INSIGHTS;
   let padIdx = 0;
-  while (selectedInsights.length < 3) {
+  while (selectedInsights.length < SCORING_CONSTANTS.MIN_INSIGHTS) {
     selectedInsights.push(
       generalInsights[padIdx++] ||
         'Portfolio: Stay invested for the long-term to beat inflation',
@@ -203,3 +177,5 @@ export async function calculateScore(
     },
   };
 }
+
+export { SCORING_CONSTANTS } from './constants';

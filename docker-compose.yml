@@ -1,0 +1,50 @@
+version: '3.8'
+
+services:
+  pgbouncer:
+    image: edoburu/pgbouncer:1.23
+    container_name: finanalysis-pgbouncer
+    environment:
+      DATABASES_HOST: ${DB_HOST:-host.docker.internal}
+      DATABASES_PORT: ${DB_PORT:-5432}
+      DATABASES_DBNAME: ${DB_NAME:-finanalysis}
+      DATABASES_USER: ${DB_USER:-postgres}
+      DATABASES_PASSWORD: ${DB_PASSWORD:-postgres}
+      POOL_MODE: transaction
+      MAX_CLIENT_CONN: 100
+      DEFAULT_POOL_SIZE: 20
+      MIN_POOL_SIZE: 5
+      RESERVE_POOL_SIZE: 5
+      RESERVE_POOL_TIMEOUT: 5
+      MAX_DB_CONNECTIONS: 50
+      IDLE_TIMEOUT: 300
+    ports:
+      - "6432:6432"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "pg_isready", "-p", "6432"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Optional: Local PostgreSQL for development
+  postgres:
+    image: postgres:16-alpine
+    container_name: finanalysis-postgres
+    environment:
+      POSTGRES_DB: ${DB_NAME:-finanalysis}
+      POSTGRES_USER: ${DB_USER:-postgres}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-postgres}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-postgres}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  postgres_data:

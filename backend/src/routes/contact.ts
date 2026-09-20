@@ -3,6 +3,9 @@ import type { Response, Request } from 'express';
 import { z } from 'zod';
 import rateLimit from 'express-rate-limit';
 import { prisma } from '../lib/prisma';
+import { ApiError } from '../lib/api-error';
+import { sendContactNotificationEmail } from '../services/email';
+import { logger } from '../lib/logger';
 
 const router = Router();
 
@@ -45,6 +48,15 @@ router.post('/', contactLimiter, async (req: Request, res: Response, next) => {
         email: validated.email,
         message: validated.message,
       },
+    });
+
+    // Send notification email to admin
+    await sendContactNotificationEmail({
+      name: validated.name,
+      email: validated.email,
+      message: validated.message,
+    }).catch((err) => {
+      logger.error({ err }, 'Failed to send contact notification email');
     });
 
     res.status(201).json({

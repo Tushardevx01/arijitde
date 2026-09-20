@@ -3,7 +3,7 @@ function getCsrfToken(): string {
   const match = document.cookie
     .split('; ')
     .find((row) => row.startsWith('csrf_token='));
-  return match ? match.slice('csrf_token='.length) : '';
+  return match ? match.split('=')[1] : '';
 }
 
 async function ensureCsrfCookie(): Promise<void> {

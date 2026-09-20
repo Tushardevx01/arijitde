@@ -10,6 +10,9 @@ import { authMiddleware } from '../middleware/auth';
 import type { AuthenticatedRequest } from '../middleware/auth';
 import { adminMiddleware } from '../middleware/admin';
 import { Role, Prisma, LeadStatus } from '@prisma/client';
+import { cachedQuery, cacheKeys, cacheTTL, invalidatePattern } from '../lib/cache';
+import { ApiError } from '../lib/api-error';
+import { auditUpdate, auditCreate, auditDelete } from '../services/audit';
 
 const router = Router();
 
@@ -323,6 +326,12 @@ router.post(
         return user;
       });
 
+      // Audit log
+      await auditUpdate('User', id, req.user!.id, userExists, updatedUser, {
+        adminId: req.user!.id,
+        action: 'role_change',
+      });
+
       res.json({
         success: true,
         data: updatedUser,
@@ -397,6 +406,12 @@ router.post(
         },
       });
 
+      // Audit log
+      await auditUpdate('Client', id, req.user!.id, userExists, clientProfile, {
+        adminId: req.user!.id,
+        action: 'client_profile_update',
+      });
+
       res.json({
         success: true,
         data: clientProfile,
@@ -425,9 +440,7 @@ router.post(
     try {
       const file = req.file;
       if (!file) {
-        res
-          .status(400)
-          .json({ success: false, error: 'CSV/Excel file is required' });
+        return next(ApiError.badRequest('CSV/Excel file is required'));
         return;
       }
 
@@ -445,7 +458,7 @@ router.post(
 
       const sheetName = workbook.SheetNames[0];
       if (!sheetName) {
-        res.status(400).json({ success: false, error: 'File sheet is empty' });
+        return next(ApiError.badRequest('File sheet is empty'));
         return;
       }
 
@@ -463,9 +476,7 @@ router.post(
       );
 
       if (rawRows.length === 0) {
-        res
-          .status(400)
-          .json({ success: false, error: 'File contains no data rows' });
+        return next(ApiError.badRequest('File contains no data rows'));
         return;
       }
 
@@ -1087,6 +1098,14 @@ router.delete(
   async (req: AuthenticatedRequest, res: Response, next) => {
     try {
       const result = await prisma.folio.deleteMany({});
+      
+      // Audit log
+      await auditDelete('Folio', 'all', req.user!.id, {}, {
+        adminId: req.user!.id,
+        action: 'clear_all_folios',
+        count: result.count,
+      });
+
       res.json({
         success: true,
         message: `Successfully cleared all ${result.count} folio records.`,
@@ -1106,9 +1125,7 @@ router.post(
     try {
       const file = req.file;
       if (!file) {
-        res
-          .status(400)
-          .json({ success: false, error: 'CSV/Excel file is required' });
+        return next(ApiError.badRequest('CSV/Excel file is required'));
         return;
       }
 
@@ -1126,7 +1143,7 @@ router.post(
 
       const sheetName = workbook.SheetNames[0];
       if (!sheetName) {
-        res.status(400).json({ success: false, error: 'File sheet is empty' });
+        return next(ApiError.badRequest('File sheet is empty'));
         return;
       }
 
@@ -1141,9 +1158,7 @@ router.post(
       );
 
       if (rawRows.length === 0) {
-        res
-          .status(400)
-          .json({ success: false, error: 'File contains no data rows' });
+        return next(ApiError.badRequest('File contains no data rows'));
         return;
       }
 
@@ -1615,6 +1630,14 @@ router.delete(
   async (req: AuthenticatedRequest, res: Response, next) => {
     try {
       const result = await prisma.existingClient.deleteMany({});
+
+      // Audit log
+      await auditDelete('ExistingClient', 'all', req.user!.id, {}, {
+        adminId: req.user!.id,
+        action: 'clear_all_existing_clients',
+        count: result.count,
+      });
+
       res.json({
         success: true,
         message: `Successfully cleared all ${result.count} existing client records.`,
@@ -1637,6 +1660,13 @@ router.delete(
       const deletedClient = await prisma.existingClient.delete({
         where: { id },
       });
+
+      // Audit log
+      await auditDelete('ExistingClient', id, req.user!.id, deletedClient, {
+        adminId: req.user!.id,
+        action: 'delete_existing_client',
+      });
+
       res.json({
         success: true,
         message: `Successfully deleted existing client ${deletedClient.name || id}.`,
@@ -1656,9 +1686,7 @@ router.post(
     try {
       const file = req.file;
       if (!file) {
-        res
-          .status(400)
-          .json({ success: false, error: 'CSV/Excel file is required' });
+        return next(ApiError.badRequest('CSV/Excel file is required'));
         return;
       }
 
@@ -1676,7 +1704,7 @@ router.post(
 
       const sheetName = workbook.SheetNames[0];
       if (!sheetName) {
-        res.status(400).json({ success: false, error: 'File sheet is empty' });
+        return next(ApiError.badRequest('File sheet is empty'));
         return;
       }
 
@@ -1694,9 +1722,7 @@ router.post(
       );
 
       if (rawRows.length === 0) {
-        res
-          .status(400)
-          .json({ success: false, error: 'File contains no data rows' });
+        return next(ApiError.badRequest('File contains no data rows'));
         return;
       }
 

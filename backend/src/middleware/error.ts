@@ -1,5 +1,7 @@
 import type { Request, Response, NextFunction } from 'express';
 import { ZodError } from 'zod';
+import { ApiError } from '../lib/api-error';
+import { logger } from '../lib/logger';
 
 export function errorHandler(
   err: Error,
@@ -8,35 +10,36 @@ export function errorHandler(
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   next: NextFunction,
 ): void {
-  console.error('API Error: ', err);
+  logger.error({
+    err,
+    message: err.message,
+    path: req.originalUrl,
+    method: req.method,
+    ip: req.ip,
+    requestId: req.requestId,
+  }, 'API Error');
 
-  if (err instanceof ZodError) {
-    const errorMessages = err.issues
-      .map((e) => `${e.path.join('.')}: ${e.message}`)
-      .join(', ');
-    res.status(400).json({
-      success: false,
-      error: `Validation error - ${errorMessages}`,
-    });
-    return;
+  let apiError: ApiError;
+
+  if (ApiError.isApiError(err)) {
+    apiError = err;
+  } else if (err instanceof ZodError) {
+    apiError = ApiError.fromZodError(err, req);
+  } else if (err.name === 'JsonWebTokenError' || err.name === 'TokenExpiredError') {
+    apiError = ApiError.unauthorized('Invalid or expired token');
+  } else {
+    const isProduction = process.env.NODE_ENV === 'production';
+    apiError = new ApiError(
+      500,
+      'Internal Server Error',
+      isProduction ? 'An unexpected error occurred' : err.message,
+    );
   }
 
-  // Handle Token / Authorization Errors
-  if (err.name === 'JsonWebTokenError' || err.name === 'TokenExpiredError') {
-    res.status(401).json({
-      success: false,
-      error: 'Unauthorized: Invalid or expired token',
-    });
-    return;
+  const problem = apiError.toProblemDetails(req);
+  // Add request ID to problem details for tracing
+  if (req.requestId) {
+    problem.requestId = req.requestId;
   }
-
-  // Fallback for default error handling
-  const status = res.statusCode >= 400 ? res.statusCode : 500;
-  const isProduction = process.env.NODE_ENV === 'production';
-  res.status(status).json({
-    success: false,
-    error: isProduction
-      ? 'Internal Server Error'
-      : err.message || 'Internal Server Error',
-  });
+  res.status(apiError.status).json(problem);
 }

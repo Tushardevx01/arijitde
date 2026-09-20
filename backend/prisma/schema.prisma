@@ -23,6 +23,8 @@ model User {
   dob               DateTime?
   anniversary       DateTime?
   createdAt         DateTime            @default(now())
+  updatedAt         DateTime            @updatedAt
+  deletedAt         DateTime?
   referralCode      String?             @unique
   referrerId        String?
   referrer          User?               @relation("UserReferrals", fields: [referrerId], references: [id])
@@ -34,12 +36,35 @@ model User {
   advisorySessions  AdvisorySession[]
   supportQueries    SupportQuery[]
   refreshTokens     RefreshToken[]
+  auditLogs               AuditLog[]
 }
 
 enum Role {
   GUEST
   CLIENT
   ADMIN
+}
+
+model AuditLog {
+  id        String   @id @default(uuid())
+  tableName String
+  recordId  String
+  action    AuditAction
+  userId    String?
+  user      User?    @relation(fields: [userId], references: [id])
+  timestamp DateTime @default(now())
+  changes   Json?
+  metadata  Json?
+
+  @@index([tableName, recordId])
+  @@index([userId, timestamp])
+  @@index([timestamp])
+}
+
+enum AuditAction {
+  CREATE
+  UPDATE
+  DELETE
 }
 
 model RefreshToken {
@@ -49,6 +74,7 @@ model RefreshToken {
   user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   expiresAt DateTime
   createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
 
   @@index([userId])
   @@index([expiresAt])
@@ -69,6 +95,7 @@ model Assessment {
   monthlyInvestment   String?
   emergencyFund       String?
   createdAt           DateTime    @default(now())
+  updatedAt           DateTime    @updatedAt
   user                User        @relation(fields: [userId], references: [id])
   portfolios          Portfolio[]
 
@@ -96,6 +123,7 @@ model Portfolio {
   assessmentId String
   uploadType   UploadType
   createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
   user         User           @relation(fields: [userId], references: [id])
   assessment   Assessment     @relation(fields: [assessmentId], references: [id])
   rows         PortfolioRow[]
@@ -120,6 +148,8 @@ model PortfolioRow {
   sipAmount    Float
   invested     Float
   currentValue Float
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
   portfolio    Portfolio @relation(fields: [portfolioId], references: [id])
 
   @@index([portfolioId])
@@ -142,6 +172,7 @@ model Score {
   tag             ScoreTag
   insights        Json
   createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
   portfolio       Portfolio @relation(fields:[portfolioId], references:[id])
 }
 
@@ -164,6 +195,7 @@ model Lead {
   status    LeadStatus @default(NEW)
   notes     String?
   createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
   user      User       @relation(fields: [userId], references: [id])
 
   @@index([userId])
@@ -183,6 +215,8 @@ model Client {
   activatedAt  DateTime @default(now())
   advisorNotes String?
   activePlan   String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
   user         User     @relation(fields: [userId], references: [id])
 }
 
@@ -257,6 +291,8 @@ model Folio {
   subBrokerCode        String?
   lastUsedArn          String?
   createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+  deletedAt            DateTime?
 
   @@index([existingClientId])
   @@index([createdAt])
@@ -266,6 +302,8 @@ model Folio {
   @@index([schemeName])
   @@index([email])
   @@index([mobile])
+  @@index([clientPan, email])
+  @@index([deletedAt])
 }
 
 model ExistingClient {
@@ -363,11 +401,12 @@ model ExistingClient {
   averageHoldingDays         Float?
   gain                       Float?
   absoluteReturn             Float?
-  cagr                       Float?
+cagr                       Float?
   xirr                       Float?
+   
+createdAt                  DateTime @default(now())
+  updatedAt                  DateTime @updatedAt
   
-  createdAt                  DateTime @default(now())
-
   @@index([createdAt])
   @@index([name])
   @@index([pan])
@@ -384,6 +423,7 @@ model ContactMessage {
   email     String
   message   String
   createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@index([createdAt])
 }

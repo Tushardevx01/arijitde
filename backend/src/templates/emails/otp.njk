@@ -1,0 +1,18 @@
+{% extends "emails/base.njk" %}
+
+{% block content %}
+<h2>Your Verification Code</h2>
+
+<p>Hi {{ name | default("there") }},</p>
+
+<p>Your verification code is:</p>
+
+<div class="code">{{ otp }}</div>
+
+<p>This code will expire in <strong>10 minutes</strong>. Please enter it in the FinAnalysis app to complete your verification.</p>
+
+<div class="info-box">
+    <p><strong>Security Tip:</strong> Never share this code with anyone. FinAnalysis will never ask for your OTP via phone or email.</p>
+</div>
+
+<p>If you didn't request this code, please ignore this email or contact support if you have concerns.</{% endblock %}

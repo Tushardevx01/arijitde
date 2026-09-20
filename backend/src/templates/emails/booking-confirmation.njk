@@ -1,0 +1,34 @@
+{% extends "emails/base.njk" %}
+
+{% block content %}
+<h2>Your Advisory Session is Confirmed!</h2>
+
+<p>Hi {{ name | default("Investor") }},</p>
+
+<p>Your 1-on-1 portfolio review session with Arijit De has been scheduled and confirmed.</p>
+
+<div class="info-box">
+    <p><strong>Date & Time:</strong> {{ scheduledAt | date("MMMM d, yyyy 'at' h:mm a") }} (IST)</p>
+    <p><strong>Duration:</strong> 45 minutes</p>
+    <p><strong>Meeting Link:</strong> <a href="{{ meetLink }}">{{ meetLink }}</a></p>
+</div>
+
+<p><strong>What to prepare:</strong></p>
+<ul>
+    <li>Your mutual fund statements (CAS or consolidated statement)</li>
+    <li>Your financial goals and risk tolerance</li>
+    <li>Any specific questions you'd like to discuss</li>
+</ul>
+
+<p>Please join the meeting 5 minutes before the scheduled time. If you need to reschedule or cancel, please do so at least 24 hours in advance.</</p>
+
+<div class="info-box">
+    <p><strong>Need to reschedule?</strong> Reply to this email or visit your dashboard to reschedule or cancel.</</p>
+</div>
+
+<p>Looking forward to helping you optimize your portfolio!</p>
+
+<p>Best regards,<br>
+Arijit De<br>
+Founder, FinAnalysis</p>
+{% endblock %}

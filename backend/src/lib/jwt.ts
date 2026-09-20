@@ -42,7 +42,7 @@ export function signRefreshToken(userId: string): string {
 
 export function verifyAccessToken(token: string): JWTPayload {
   const decoded = jwt.verify(token, SECRET) as any;
-  if (decoded.type && decoded.type !== 'access') {
+  if (decoded.type !== 'access') {
     throw new jwt.JsonWebTokenError('Invalid token type');
   }
   return { userId: decoded.userId, email: decoded.email, role: decoded.role };

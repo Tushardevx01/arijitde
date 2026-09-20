@@ -5,6 +5,8 @@ import { prisma } from '../lib/prisma';
 import { authMiddleware } from '../middleware/auth';
 import type { AuthenticatedRequest } from '../middleware/auth';
 import { Goal } from '@prisma/client';
+import { cachedQuery, cacheKeys, cacheTTL, invalidatePattern } from '../lib/cache';
+import { ApiError } from '../lib/api-error';
 
 const router = Router();
 
@@ -86,7 +88,6 @@ router.post(
     }
   },
 );
-
 // GET /api/assess
 router.get(
   '/',
@@ -94,13 +95,22 @@ router.get(
   async (req: AuthenticatedRequest, res: Response, next) => {
     try {
       const userId = req.user!.id;
-      const assessments = await prisma.assessment.findMany({
-        where: { userId },
-        orderBy: { createdAt: 'desc' },
-      });
+      const cacheKey = cacheKeys.userAssessment(userId);
+
+      const data = await cachedQuery(
+        cacheKey,
+        async () => {
+          return prisma.assessment.findMany({
+            where: { userId },
+            orderBy: { createdAt: 'desc' },
+          });
+        },
+        { ttl: cacheTTL.medium }
+      );
+
       res.json({
         success: true,
-        data: assessments,
+        data,
       });
     } catch (error) {
       next(error);
@@ -121,30 +131,60 @@ router.get(
       const { id } = getAssessmentParamsSchema.parse(req.params);
       const userId = req.user!.id; // Guaranteed by authMiddleware
 
-      const assessment = await prisma.assessment.findUnique({
-        where: { id },
-      });
+      const cacheKey = cacheKeys.assessmentDetail(id);
+
+      const assessment = await cachedQuery(
+        cacheKey,
+        async () => {
+          return prisma.assessment.findUnique({
+            where: { id },
+          });
+        },
+        { ttl: cacheTTL.medium }
+      );
 
       if (!assessment) {
-        res.status(404).json({
-          success: false,
-          error: 'Assessment not found',
-        });
-        return;
+        return next(ApiError.notFound('Assessment not found'));
       }
 
       // Only return if assessment belongs to req.user.id
       if (assessment.userId !== userId) {
-        res.status(403).json({
-          success: false,
-          error: 'Forbidden: You do not own this assessment',
-        });
-        return;
+        return next(ApiError.forbidden('You do not own this assessment'));
       }
 
       res.json({
         success: true,
         data: assessment,
+      });
+    } catch (error) {
+      next(error);
+    }
+  },
+);
+
+// GET /api/assess/user/:userId
+router.get(
+  '/user/:userId',
+  authMiddleware,
+  async (req: AuthenticatedRequest, res: Response, next) => {
+    try {
+      const { userId } = req.params as { userId: string };
+      const cacheKey = cacheKeys.userAssessment(userId);
+
+      const data = await cachedQuery(
+        cacheKey,
+        async () => {
+          return prisma.assessment.findFirst({
+            where: { userId },
+            orderBy: { createdAt: 'desc' },
+          });
+        },
+        { ttl: cacheTTL.medium }
+      );
+
+      res.json({
+        success: true,
+        data,
       });
     } catch (error) {
       next(error);
