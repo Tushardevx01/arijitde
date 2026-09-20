@@ -93,7 +93,7 @@ router.post(
       // Optional user personalization if authenticated
       let dynamicSystemPrompt = SYSTEM_PROMPT;
       if (req.user) {
-        dynamicSystemPrompt += `\n\nUser Context:\n- Authenticated Client Name: ${req.user.name || 'Valued Client'}\n- Email: ${req.user.email || 'N/A'}`;
+        dynamicSystemPrompt += `\n\nUser Context:\n- Authenticated Client Name: ${req.user.name || 'Valued Client'}`;
       }
 
       // Models to try in order of preference
@@ -126,6 +126,7 @@ router.post(
                 temperature: 0.2,
                 max_tokens: 350,
               }),
+              signal: AbortSignal.timeout(15_000),
             },
           );
 
