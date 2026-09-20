@@ -208,53 +208,7 @@ router.put(
   },
 );
 
-// 4. GET /api/leads/:id (user or admin)
-router.get(
-  '/:id',
-  authMiddleware,
-  async (req: AuthenticatedRequest, res: Response, next) => {
-    try {
-      const { id } = z
-        .object({ id: z.string().uuid('Invalid lead ID format') })
-        .parse(req.params);
 
-      const lead = await leadsService.getLeadById(
-        id,
-        req.user!.id,
-        req.user!.role,
-      );
-
-      res.json({
-        success: true,
-        data: lead,
-      });
-    } catch (error) {
-      next(error);
-    }
-  },
-);
-
-// 5. DELETE /api/leads/:id (user or admin)
-router.delete(
-  '/:id',
-  authMiddleware,
-  async (req: AuthenticatedRequest, res: Response, next) => {
-    try {
-      const { id } = z
-        .object({ id: z.string().uuid('Invalid lead ID format') })
-        .parse(req.params);
-
-      await leadsService.deleteLead(id, req.user!.id, req.user!.role);
-
-      res.json({
-        success: true,
-        message: 'Lead deleted successfully',
-      });
-    } catch (error) {
-      next(error);
-    }
-  },
-);
 
 // 6. GET /api/leads/my-bookings (user)
 router.get(
@@ -462,6 +416,54 @@ router.delete(
       res.json({
         success: true,
         message: 'Session deleted successfully',
+      });
+    } catch (error) {
+      next(error);
+    }
+  },
+);
+
+// GET /api/leads/:id (user or admin) - Parameterized route placed after all static routes
+router.get(
+  '/:id',
+  authMiddleware,
+  async (req: AuthenticatedRequest, res: Response, next) => {
+    try {
+      const { id } = z
+        .object({ id: z.string().uuid('Invalid lead ID format') })
+        .parse(req.params);
+
+      const lead = await leadsService.getLeadById(
+        id,
+        req.user!.id,
+        req.user!.role,
+      );
+
+      res.json({
+        success: true,
+        data: lead,
+      });
+    } catch (error) {
+      next(error);
+    }
+  },
+);
+
+// DELETE /api/leads/:id (user or admin) - Parameterized route placed after all static routes
+router.delete(
+  '/:id',
+  authMiddleware,
+  async (req: AuthenticatedRequest, res: Response, next) => {
+    try {
+      const { id } = z
+        .object({ id: z.string().uuid('Invalid lead ID format') })
+        .parse(req.params);
+
+      await leadsService.deleteLead(id, req.user!.id, req.user!.role);
+
+      res.json({
+        success: true,
+        message: 'Lead deleted successfully',
       });
     } catch (error) {
       next(error);

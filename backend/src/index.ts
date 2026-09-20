@@ -7,7 +7,6 @@ dotenv.config();
 if (!process.env.JWT_SECRET) {
   dotenv.config({ path: path.resolve(__dirname, '../../.env') });
 }
-import * as Sentry from '@sentry/node';
 import { initSentry } from './lib/sentry';
 import express from 'express';
 import cors from 'cors';
@@ -25,7 +24,7 @@ import supportRouter from './routes/support';
 import metricsRouter, { metricsMiddleware } from './routes/metrics';
 import { requestIdMiddleware } from './middleware/requestId';
 import { errorHandler } from './middleware/error';
-import { authMiddleware, AuthenticatedRequest } from './middleware/auth';
+import { authMiddleware, optionalAuthMiddleware, AuthenticatedRequest } from './middleware/auth';
 import { csrfMiddleware } from './middleware/csrf';
 import cookieParser from 'cookie-parser';
 import { getApiPrefix } from './config/apiVersion';
@@ -78,10 +77,11 @@ async function validateAMFISchemeCodes(): Promise<void> {
   }
 
   try {
-    const { CATEGORY_BENCHMARKS, CATEGORY_TOP_PERFORMERS } = await import('./services/amfiService.js');
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const { CATEGORY_BENCHMARKS, CATEGORY_TOP_PERFORMERS } = require('./services/amfiService');
     const codesToCheck = new Set<number>([
-      ...Object.values(CATEGORY_BENCHMARKS),
-      ...Object.values(CATEGORY_TOP_PERFORMERS).map((performer) => performer.code),
+      ...Object.values(CATEGORY_BENCHMARKS as Record<string, number>),
+      ...Object.values(CATEGORY_TOP_PERFORMERS as Record<string, { code: number }>).map((performer) => performer.code),
     ]);
 
     let allValid = true;
@@ -194,7 +194,7 @@ app.use((req, res, next) => {
 app.use(csrfMiddleware);
 
 // Authentication middleware (sets req.user for authenticated requests)
-app.use(authMiddleware);
+app.use(optionalAuthMiddleware);
 
 // F5: Global rate limiter — 200 requests per 15 min per IP + User-Agent fingerprint
 // Authenticated users (req.user set) skip rate limiting
@@ -217,6 +217,7 @@ const globalLimiter = rateLimit({
   max: 200,
   standardHeaders: true,
   legacyHeaders: false,
+  validate: { keyGeneratorIpFallback: false },
   keyGenerator: (req) => {
     const ip = req.ip || req.socket.remoteAddress || 'unknown';
     const ua = req.headers['user-agent'] || 'unknown';
@@ -349,18 +350,27 @@ app.use(
   express.static(path.join(__dirname, '../uploads')),
 );
 
-// API v1 routes
+// API routes (support both /api/v1 and legacy /api for frontend compatibility)
 const apiPrefix = getApiPrefix();
-app.use(`${apiPrefix}/auth`, authRouter);
-app.use(`${apiPrefix}/assess`, assessRouter);
-app.use(`${apiPrefix}/portfolio`, portfolioRouter);
-app.use(`${apiPrefix}/score`, scoreRouter);
-app.use(`${apiPrefix}/leads`, leadsRouter);
-app.use(`${apiPrefix}/admin`, adminRouter);
-app.use(`${apiPrefix}/chat`, chatRouter);
-app.use(`${apiPrefix}/contact`, contactRouter);
-app.use(`${apiPrefix}/support`, supportRouter);
-app.use(`${apiPrefix}/metrics`, metricsRouter);
+const routers: [string, any][] = [
+  ['/auth', authRouter],
+  ['/assess', assessRouter],
+  ['/portfolio', portfolioRouter],
+  ['/score', scoreRouter],
+  ['/leads', leadsRouter],
+  ['/admin', adminRouter],
+  ['/chat', chatRouter],
+  ['/contact', contactRouter],
+  ['/support', supportRouter],
+  ['/metrics', metricsRouter],
+];
+
+for (const [route, router] of routers) {
+  app.use(`${apiPrefix}${route}`, router);
+  if (apiPrefix !== '/api') {
+    app.use(`/api${route}`, router);
+  }
+}
 
 // 404 handler for unknown routes
 app.use((req, res, next) => {
