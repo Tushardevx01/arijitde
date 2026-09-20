@@ -7,6 +7,9 @@ const transporter = nodemailer.createTransport({
   host: 'smtp.gmail.com',
   port: 587,
   secure: false,
+  connectionTimeout: 10000,
+  greetingTimeout: 5000,
+  socketTimeout: 10000,
   auth: {
     user: process.env.GMAIL_USER,
     pass: process.env.GMAIL_APP_PASSWORD,
@@ -54,7 +57,13 @@ export async function sendTemplatedEmail({ to, subject, template, data }: EmailO
       html,
     };
 
-    await transporter.sendMail(mailOptions);
+    logger.info({ to, subject, template }, 'SMTP connecting');
+    const sendMailPromise = transporter.sendMail(mailOptions);
+    const timeoutPromise = new Promise<never>((_, reject) =>
+      setTimeout(() => reject(new Error('Email send timeout after 15s')), 15000)
+    );
+    logger.info({ to, subject, template }, 'SMTP sending');
+    await Promise.race([sendMailPromise, timeoutPromise]);
     logger.info({ to, subject, template }, 'Email sent successfully');
   } catch (error) {
     logger.error({ err: error, to, subject, template }, 'Failed to send email');

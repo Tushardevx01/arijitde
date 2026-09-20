@@ -107,6 +107,11 @@ GOOGLE_CLIENT_SECRET="your-client-secret"
 # Gmail SMTP
 GMAIL_USER="your-email@gmail.com"
 GMAIL_APP_PASSWORD="your-app-password"
+# Email timeout (optional, in ms)
+# SMTP_CONNECTION_TIMEOUT=10000
+# SMTP_GREETING_TIMEOUT=5000
+# SMTP_SOCKET_TIMEOUT=10000
+# EMAIL_SEND_TIMEOUT=15000
 
 # Redis Cache
 UPSTASH_REDIS_REST_URL="https://your-redis.upstash.io"

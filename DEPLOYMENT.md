@@ -24,6 +24,10 @@
 | GOOGLE_CLIENT_SECRET | Yes | Google OAuth Secret |
 | GMAIL_USER | Yes | Gmail address |
 | GMAIL_APP_PASSWORD | Yes | Gmail App Password |
+| SMTP_CONNECTION_TIMEOUT | No | SMTP connection timeout in ms (default: 10000) |
+| SMTP_GREETING_TIMEOUT | No | SMTP greeting timeout in ms (default: 5000) |
+| SMTP_SOCKET_TIMEOUT | No | SMTP socket timeout in ms (default: 10000) |
+| EMAIL_SEND_TIMEOUT | No | Overall email send timeout in ms (default: 15000) |
 | GROK_API_KEY | Yes | Grok API Key |
 | UPSTASH_REDIS_REST_URL | Yes | Upstash Redis REST URL |
 | UPSTASH_REDIS_REST_TOKEN | Yes | Upstash Redis Token |
@@ -69,6 +73,10 @@ GOOGLE_CLIENT_ID=xxx.apps.googleusercontent.com
 GOOGLE_CLIENT_SECRET=xxx
 GMAIL_USER=your-email@gmail.com
 GMAIL_APP_PASSWORD=your-16-char-app-password
+SMTP_CONNECTION_TIMEOUT=10000
+SMTP_GREETING_TIMEOUT=5000
+SMTP_SOCKET_TIMEOUT=10000
+EMAIL_SEND_TIMEOUT=15000
 GROK_API_KEY=xxx
 UPSTASH_REDIS_REST_URL=https://xxx.upstash.io
 UPSTASH_REDIS_REST_TOKEN=xxx
@@ -310,6 +318,8 @@ DATABASE_URL="..." npx prisma migrate deploy
 | Redis connection refused | Wrong URL | Check UPSTASH_REDIS_REST_URL |
 | Google OAuth fails | Redirect URI mismatch | Check Google Cloud Console |
 | Email not sending | App password expired | Regenerate Gmail App Password |
+| Email send timeout | Network/firewall blocking SMTP | Check port 587, increase EMAIL_SEND_TIMEOUT |
+| Email hangs indefinitely | Missing SMTP timeouts | Ensure SMTP_CONNECTION_TIMEOUT, SMTP_SOCKET_TIMEOUT set |
 
 ### Debug Commands
 
