@@ -292,7 +292,7 @@ DATABASE_URL="..." npx prisma migrate deploy
 ### Scheduled Tasks
 
 - **Daily**: Neon automated backups
-- **Weekly**: Dependency updates (`npm audit fix`) — **Frontend now clean, Backend has 5 high (Prisma 6.x / nodemailer 10.x deferred)**
+- **Weekly**: Dependency updates (`npm audit fix`) — **Frontend now clean, Backend has 5 high (Prisma 7.10.0 / nodemailer 8.0.11 deferred)**
 - **Monthly**: Rotate JWT/OTP secrets
 - **Quarterly**: Review and rotate all API keys
 
