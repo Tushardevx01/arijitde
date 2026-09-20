@@ -4,6 +4,9 @@ import { z } from 'zod';
 import { prisma } from '../lib/prisma';
 import { authMiddleware } from '../middleware/auth';
 import type { AuthenticatedRequest } from '../middleware/auth';
+import { ApiError } from '../lib/api-error';
+import { sendSupportQueryNotificationEmail } from '../services/email';
+import { logger } from '../lib/logger';
 
 const router = Router(); // support query router
 
@@ -20,8 +23,7 @@ router.post(
     try {
       const userId = req.user?.id;
       if (!userId) {
-        res.status(401).json({ success: false, error: 'Unauthorized' });
-        return;
+        return next(ApiError.unauthorized('Unauthorized'));
       }
 
       const body = querySchema.parse(req.body);
@@ -32,6 +34,16 @@ router.post(
           subject: body.subject,
           message: body.message,
         },
+      });
+
+      // Send notification email to admin
+      await sendSupportQueryNotificationEmail({
+        name: req.user?.name || 'Unknown',
+        email: req.user?.email || 'unknown',
+        subject: body.subject,
+        message: body.message,
+      }).catch((err) => {
+        logger.error({ err }, 'Failed to send support query notification email');
       });
 
       res.status(201).json({
@@ -53,8 +65,7 @@ router.get(
     try {
       const userId = req.user?.id;
       if (!userId) {
-        res.status(401).json({ success: false, error: 'Unauthorized' });
-        return;
+        return next(ApiError.unauthorized('Unauthorized'));
       }
 
       const queries = await prisma.supportQuery.findMany({

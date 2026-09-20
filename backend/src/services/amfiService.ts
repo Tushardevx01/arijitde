@@ -4,28 +4,8 @@
  * using the public api.mfapi.in API.
  */
 
-// ── In-memory cache with TTL ──
-interface CacheEntry<T> {
-  data: T;
-  expiry: number;
-}
-
-const cache = new Map<string, CacheEntry<any>>();
-const CACHE_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours
-
-function getCached<T>(key: string): T | null {
-  const entry = cache.get(key);
-  if (!entry) return null;
-  if (Date.now() > entry.expiry) {
-    cache.delete(key);
-    return null;
-  }
-  return entry.data as T;
-}
-
-function setCache<T>(key: string, data: T): void {
-  cache.set(key, { data, expiry: Date.now() + CACHE_TTL_MS });
-}
+import { logger } from '../lib/logger';
+import { cachedQuery, cacheKeys, cacheTTL } from '../lib/cache';
 
 // ── AMFI API Types ──
 interface MFSearchResult {
@@ -51,7 +31,7 @@ interface MFSchemeData {
 
 // ── Category Benchmark Index Fund Codes ──
 // These are representative low-cost index funds for each category
-const CATEGORY_BENCHMARKS: Record<string, number> = {
+export const CATEGORY_BENCHMARKS: Record<string, number> = {
   large_cap: 120503, // Nifty 50 Index Fund (UTI)
   mid_cap: 147622, // Nifty Midcap 150 Index Fund
   small_cap: 145197, // Nifty Smallcap 250 Index Fund
@@ -254,33 +234,29 @@ export function isDebtCategory(category: string): boolean {
 export async function searchScheme(
   schemeName: string,
 ): Promise<MFSearchResult[]> {
-  const cacheKey = `search:${schemeName.toLowerCase().trim()}`;
-  const cached = getCached<MFSearchResult[]>(cacheKey);
-  if (cached) return cached;
+  const cacheKey = cacheKeys.amfiSearch(schemeName.toLowerCase().trim());
+  return cachedQuery(
+    cacheKey,
+    async () => {
+      // Clean up the name for better search
+      const searchQuery = schemeName
+        .replace(/\s*-\s*(growth|dividend|direct|regular|plan|option)\s*/gi, ' ')
+        .replace(/\s+/g, ' ')
+        .trim()
+        .split(' ')
+        .slice(0, 4) // Take first 4 words for better matching
+        .join(' ');
 
-  try {
-    // Clean up the name for better search
-    const searchQuery = schemeName
-      .replace(/\s*-\s*(growth|dividend|direct|regular|plan|option)\s*/gi, ' ')
-      .replace(/\s+/g, ' ')
-      .trim()
-      .split(' ')
-      .slice(0, 4) // Take first 4 words for better matching
-      .join(' ');
+      const res = await fetch(
+        `https://api.mfapi.in/mf/search?q=${encodeURIComponent(searchQuery)}`,
+      );
+      if (!res.ok) return [];
 
-    const res = await fetch(
-      `https://api.mfapi.in/mf/search?q=${encodeURIComponent(searchQuery)}`,
-    );
-    if (!res.ok) return [];
-
-    const data = (await res.json()) as MFSearchResult[];
-    const results = data.slice(0, 10); // Take top 10 matches
-    setCache(cacheKey, results);
-    return results;
-  } catch (err) {
-    console.error(`AMFI search failed for "${schemeName}":`, err);
-    return [];
-  }
+      const data = (await res.json()) as MFSearchResult[];
+      return data.slice(0, 10); // Take top 10 matches
+    },
+    { ttl: cacheTTL.veryLong }
+  );
 }
 
 /**
@@ -289,23 +265,25 @@ export async function searchScheme(
 export async function getSchemeNAV(
   schemeCode: number,
 ): Promise<MFSchemeData | null> {
-  const cacheKey = `nav:${schemeCode}`;
-  const cached = getCached<MFSchemeData>(cacheKey);
-  if (cached) return cached;
+  const cacheKey = cacheKeys.amfiNav(schemeCode);
+  return cachedQuery(
+    cacheKey,
+    async () => {
+      try {
+        const res = await fetch(`https://api.mfapi.in/mf/${schemeCode}`);
+        if (!res.ok) return null;
 
-  try {
-    const res = await fetch(`https://api.mfapi.in/mf/${schemeCode}`);
-    if (!res.ok) return null;
+        const data = (await res.json()) as MFSchemeData;
+        if (!data.data || data.data.length === 0) return null;
 
-    const data = (await res.json()) as MFSchemeData;
-    if (!data.data || data.data.length === 0) return null;
-
-    setCache(cacheKey, data);
-    return data;
-  } catch (err) {
-    console.error(`AMFI NAV fetch failed for code ${schemeCode}:`, err);
-    return null;
-  }
+        return data;
+      } catch (err) {
+        logger.error({ err, schemeCode }, 'AMFI NAV fetch failed');
+        return null;
+      }
+    },
+    { ttl: cacheTTL.veryLong }
+  );
 }
 
 /**
@@ -314,40 +292,36 @@ export async function getSchemeNAV(
 export async function calculate1YReturn(
   schemeCode: number,
 ): Promise<number | null> {
-  const cacheKey = `return1y:${schemeCode}`;
-  const cached = getCached<number>(cacheKey);
-  if (cached !== null) return cached;
+  const cacheKey = cacheKeys.amfiReturn1y(schemeCode);
+  return cachedQuery(
+    cacheKey,
+    async () => {
+      const data = await getSchemeNAV(schemeCode);
+      if (!data || data.data.length < 2) return null;
 
-  try {
-    const data = await getSchemeNAV(schemeCode);
-    if (!data || data.data.length < 2) return null;
+      // NAV data is sorted newest first
+      const latestNAV = parseFloat(data.data[0]!.nav);
 
-    // NAV data is sorted newest first
-    const latestNAV = parseFloat(data.data[0]!.nav);
+      // Find NAV from ~1 year ago
+      const oneYearAgo = new Date();
+      oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
 
-    // Find NAV from ~1 year ago
-    const oneYearAgo = new Date();
-    oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
-
-    let yearAgoNAV: number | null = null;
-    for (const dp of data.data) {
-      const [day, month, year] = dp.date.split('-');
-      const dpDate = new Date(`${year}-${month}-${day}`);
-      if (dpDate <= oneYearAgo) {
-        yearAgoNAV = parseFloat(dp.nav);
-        break;
+      let yearAgoNAV: number | null = null;
+      for (const dp of data.data) {
+        const [day, month, year] = dp.date.split('-');
+        const dpDate = new Date(`${year}-${month}-${day}`);
+        if (dpDate <= oneYearAgo) {
+          yearAgoNAV = parseFloat(dp.nav);
+          break;
+        }
       }
-    }
 
-    if (!yearAgoNAV || yearAgoNAV <= 0) return null;
+      if (!yearAgoNAV || yearAgoNAV <= 0) return null;
 
-    const returnPct = ((latestNAV - yearAgoNAV) / yearAgoNAV) * 100;
-    setCache(cacheKey, returnPct);
-    return returnPct;
-  } catch (err) {
-    console.error(`1Y return calc failed for code ${schemeCode}:`, err);
-    return null;
-  }
+      return ((latestNAV - yearAgoNAV) / yearAgoNAV) * 100;
+    },
+    { ttl: cacheTTL.veryLong }
+  );
 }
 
 /**
@@ -376,7 +350,7 @@ export async function getFundReturn(
     const returnPct = await calculate1YReturn(bestMatch.schemeCode);
     return { returnPct, schemeCode: bestMatch.schemeCode };
   } catch (err) {
-    console.error(`getFundReturn failed for "${fundName}":`, err);
+    logger.error({ err, fundName }, 'getFundReturn failed');
     return { returnPct: null, schemeCode: null };
   }
 }

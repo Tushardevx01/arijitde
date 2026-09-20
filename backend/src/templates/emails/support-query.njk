@@ -1,0 +1,21 @@
+{% extends "emails/base.njk" %}
+
+{% block content %}
+<h2>New Support Query</h2>
+
+<p>Hi Team,</p>
+
+<p>A new support query has been submitted by {{ name | default("a user") }}.</p>
+
+<div class="info-box">
+    <p><strong>Subject:</strong> {{ subject }}</p>
+</div>
+
+<h3>Message:</h3>
+<p>{{ message }}</p>
+
+<p>Please respond to this query as soon as possible.</p>
+
+<p>Best regards,<br>
+The FinAnalysis Team</p>
+{% endblock %}

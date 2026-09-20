@@ -1,0 +1,22 @@
+{% extends "emails/base.njk" %}
+
+{% block content %}
+<h2>New Contact Form Submission</h2>
+
+<p>Hi Team,</p>
+
+<p>A new contact form submission has been received from {{ name }}.</p>
+
+<div class="info-box">
+    <p><strong>Name:</strong> {{ name }}</p>
+    <p><strong>Email:</strong> {{ email }}</p>
+</div>
+
+<h3>Message:</h3>
+<p>{{ message }}</p>
+
+<p>Please respond to this inquiry as soon as possible.</p>
+
+<p>Best regards,<br>
+The FinAnalysis Team</p>
+{% endblock %}

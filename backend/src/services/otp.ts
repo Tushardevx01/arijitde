@@ -1,115 +1,195 @@
-import { randomInt } from 'crypto';
-import { transporter } from './email';
+import { randomInt, createHmac } from 'crypto';
+import { sendOTPEmail } from './email';
+import { redis, isRedisAvailable } from '../lib/redis';
+import {
+  OTP_CONFIG,
+  CACHE_PREFIXES,
+  SECURITY_CONFIG,
+} from '../config/constants';
 
-// Memory store for OTPs: email (lowercase) -> { otp: string, expiresAt: Date, attempts: number }
-const otpStore = new Map<
-  string,
-  { otp: string; expiresAt: Date; attempts: number }
->();
+const OTP_SECRET = process.env.OTP_SECRET!;
+if (!OTP_SECRET) {
+  throw new Error(
+    'OTP_SECRET environment variable is required. Set a separate secret for OTP hashing.',
+  );
+}
 
-/**
- * Generates a cryptographically secure random 6-digit OTP string.
- */
+const isProd = process.env.NODE_ENV === 'production';
+
+// In-memory fallback for local development without Redis
+const otpStore = !isProd
+  ? new Map<string, { otpHash: string; expiresAt: number; attempts: number }>()
+  : null;
+
+// Cleanup interval for in-memory OTP store (dev only)
+// Runs every hour to prune expired entries
+if (!isProd && otpStore) {
+  setInterval(() => {
+    const now = Date.now();
+    for (const [key, record] of otpStore.entries()) {
+      if (record.expiresAt <= now) {
+        otpStore.delete(key);
+      }
+    }
+  }, 60 * 60 * 1000).unref();
+}
+
+const OTP_TTL_SECONDS = OTP_CONFIG.TTL_SECONDS;
+const MAX_ATTEMPTS = parseInt(process.env.OTP_MAX_ATTEMPTS || String(OTP_CONFIG.MAX_ATTEMPTS), 10);
+
+function hashOTP(otp: string): string {
+  return createHmac('sha256', OTP_SECRET).update(otp).digest('hex');
+}
+
 export function generateOTP(): string {
   return randomInt(100000, 999999).toString();
 }
 
-/**
- * Sends OTP to the specified email address using Gmail SMTP.
- */
-export async function sendOTP(email: string, otp: string): Promise<void> {
-  const mailOptions = {
-    from: `"FinAnalysis" <${process.env.GMAIL_USER}>`,
-    to: email,
-    subject: 'Your FinAnalysis Verification Code',
-    text: `Your verification code is ${otp}. It will expire in 10 minutes.`,
-    html: `
-      <div style="font-family: Arial, sans-serif; max-width: 500px; margin: 0 auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 8px;">
-        <h2 style="color: #0F172A; text-align: center;">FinAnalysis</h2>
-        <p style="font-size: 16px; color: #334155;">Hello,</p>
-        <p style="font-size: 16px; color: #334155;">Please use the following 6-digit OTP to complete your sign-in process. This OTP is valid for 10 minutes.</p>
-        <div style="font-size: 32px; font-weight: bold; letter-spacing: 6px; text-align: center; padding: 15px; margin: 20px 0; background-color: #F1F5F9; border-radius: 6px; color: #2563EB;">
-          ${otp}
-        </div>
-        <p style="font-size: 14px; color: #64748B; text-align: center;">If you did not request this verification code, please ignore this email.</p>
-      </div>
-    `,
-  };
+function otpKey(email: string, purpose: string): string {
+  const normalizedEmail = email.toLowerCase();
+  const digest = createHmac('sha256', OTP_SECRET)
+    .update(`${normalizedEmail}:${purpose}`)
+    .digest('hex')
+    .slice(0, OTP_CONFIG.KEY_DIGEST_LENGTH);
+  return `${CACHE_PREFIXES.OTP || 'otp:'}${digest}:${purpose}`;
+}
 
-  try {
-    await transporter.sendMail(mailOptions);
-    console.log(`[OTP] Email sent successfully to ${email}`);
-  } catch (error) {
-    console.error(`[OTP] Failed to send email to ${email} via SMTP:`, error);
-    if (process.env.NODE_ENV !== 'production') {
-      console.warn(`[OTP] DEV FALLBACK. Code for ${email}: ${otp}`);
-    } else {
-      console.error(
-        `[OTP] SMTP delivery failed for ${email}. User will need to retry.`,
-      );
+export async function saveOTP(
+  email: string,
+  otp: string,
+  purpose: string,
+): Promise<void> {
+  const key = otpKey(email, purpose);
+  const otpHashed = hashOTP(otp);
+  const expiresAt = Date.now() + OTP_CONFIG.TTL_SECONDS * 1000;
+  const record = { otpHash: otpHashed, expiresAt, attempts: 0 };
+
+  if (!isRedisAvailable()) {
+    if (isProd) {
+      throw new Error('Redis is required for OTP storage. Set UPSTASH_REDIS_REST_URL and UPSTASH_REDIS_REST_TOKEN.');
     }
+    otpStore!.set(key, record);
+    return;
   }
+  await redis!.setex(key, OTP_CONFIG.TTL_SECONDS, record);
 }
 
-/**
- * Saves OTP in the in-memory map with a 10-minute expiry time limit.
- */
-export function saveOTP(email: string, otp: string): void {
-  const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
-  otpStore.set(email.toLowerCase(), { otp, expiresAt, attempts: 0 });
+const OTP_DELETE_SCRIPT = `
+  local key = KEYS[1]
+  local expectedHash = ARGV[1]
+  local raw = redis.call('GET', key)
+
+  if not raw then return 0 end
+
+  local record = cjson.decode(raw)
+  if record.otpHash ~= expectedHash then return 0 end
+
+  redis.call('DEL', key)
+  return 1
+`;
+
+export async function deleteOTP(
+  email: string,
+  otp: string,
+  purpose: string,
+): Promise<void> {
+  const key = otpKey(email, purpose);
+  const expectedHash = hashOTP(otp);
+
+  if (!isRedisAvailable()) {
+    if (isProd) {
+      throw new Error('Redis is required for OTP operations.');
+    }
+    const record = otpStore!.get(key);
+    if (record?.otpHash === expectedHash) {
+      otpStore!.delete(key);
+    }
+    return;
+  }
+  await redis!.eval(OTP_DELETE_SCRIPT, [key], [expectedHash]);
 }
 
-/**
- * Verifies if the OTP is correct and has not expired.
- * Removes OTP from the store upon successful or unsuccessful validation.
- */
-const MAX_OTP_ATTEMPTS = 5;
+// Lua script for atomic OTP verification on Redis
+// Returns: 1 = success, -1 = wrong OTP (attempts incremented), 0 = expired/missing/max attempts
+const OTP_VERIFY_SCRIPT = `
+  local key = KEYS[1]
+  local submittedHash = ARGV[1]
+  local now = tonumber(ARGV[2])
+  local maxAttempts = tonumber(ARGV[3])
 
-export function verifyOTP(email: string, otp: string): boolean {
-  // Development/Testing bypass — NEVER allow in production
-  if (
-    process.env.NODE_ENV !== 'production' &&
-    (otp === '123456' || otp === '999999')
-  ) {
+  local raw = redis.call('GET', key)
+  if not raw then return 0 end
+
+  local record = cjson.decode(raw)
+
+  local expiresAt = tonumber(record.expiresAt)
+  if expiresAt <= now then
+    redis.call('DEL', key)
+    return 0
+  end
+
+  if record.attempts >= maxAttempts then
+    redis.call('DEL', key)
+    return 0
+  end
+
+  if record.otpHash ~= submittedHash then
+    record.attempts = record.attempts + 1
+    local remainingTtl = math.max(1, math.floor((expiresAt - now) / 1000))
+    redis.call('SETEX', key, remainingTtl, cjson.encode(record))
+    return -1
+  end
+
+  redis.call('DEL', key)
+  return 1
+`;
+
+export async function verifyOTP(
+  email: string,
+  otp: string,
+  purpose: string,
+): Promise<boolean> {
+  const key = otpKey(email, purpose);
+
+  if (!isRedisAvailable()) {
+    if (isProd) {
+      throw new Error('Redis is required for OTP verification.');
+    }
+    const record = otpStore!.get(key);
+    if (!record) return false;
+
+    const now = Date.now();
+    if (record.expiresAt <= now) {
+      otpStore!.delete(key);
+      return false;
+    }
+
+    if (record.attempts >= MAX_ATTEMPTS) {
+      otpStore!.delete(key);
+      return false;
+    }
+
+    if (record.otpHash !== hashOTP(otp)) {
+      record.attempts += 1;
+      return false;
+    }
+
+    otpStore!.delete(key);
     return true;
   }
-
-  const key = email.toLowerCase();
-  const record = otpStore.get(key);
-
-  if (!record) {
-    return false;
-  }
-
-  // Check if expired
-  if (record.expiresAt.getTime() < Date.now()) {
-    otpStore.delete(key);
-    return false;
-  }
-
-  // Check if max attempts exceeded
-  if (record.attempts >= MAX_OTP_ATTEMPTS) {
-    otpStore.delete(key);
-    return false;
-  }
-
-  // Validate OTP
-  if (record.otp !== otp) {
-    record.attempts += 1;
-    return false;
-  }
-
-  // Clear OTP from memory after successful verification
-  otpStore.delete(key);
-  return true;
+  const result = (await redis!.eval(
+    OTP_VERIFY_SCRIPT,
+    [key],
+    [hashOTP(otp), Date.now().toString(), MAX_ATTEMPTS.toString()],
+  )) as number;
+  return result === 1;
 }
 
-// Periodic cleanup of expired OTPs to prevent memory leaks
-setInterval(() => {
-  const now = Date.now();
-  for (const [key, record] of otpStore) {
-    if (record.expiresAt.getTime() < now) {
-      otpStore.delete(key);
-    }
-  }
-}, 60_000); // Every 60 seconds
+// Send OTP via email
+export async function sendOTP(
+  email: string,
+  otp: string,
+  name?: string,
+): Promise<void> {
+  await sendOTPEmail(email, otp, name);
+}

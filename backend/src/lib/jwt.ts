@@ -1,5 +1,6 @@
 import jwt from 'jsonwebtoken';
 import { Role } from '@prisma/client';
+import { randomUUID } from 'crypto';
 
 const JWT_SECRET = process.env.JWT_SECRET;
 if (!JWT_SECRET) {
@@ -14,24 +15,53 @@ export interface JWTPayload {
   role: Role;
 }
 
-/**
- * Signs a JWT token with the provided user payload.
- * Generates a token that expires in 24 hours to mitigate security risks 
- * associated with long-lived tokens lacking revocation mechanisms.
- * 
- * @param payload - The JWT payload containing userId, email, and role.
- * @returns The signed JWT string.
- */
-export function signToken(payload: JWTPayload): string {
-  return jwt.sign(payload, SECRET, { expiresIn: '24h' });
+interface RefreshPayload {
+  userId: string;
+  type: 'refresh';
 }
 
-/**
- * Verifies and decodes a JWT token.
- * 
- * @param token - The JWT string to verify.
- * @returns The decoded JWTPayload.
- */
+interface AccessPayload extends JWTPayload {
+  type: 'access';
+}
+
+export function signAccessToken(payload: JWTPayload): string {
+  return jwt.sign({ ...payload, type: 'access' }, SECRET, { expiresIn: '15m' });
+}
+
+export function signRefreshToken(userId: string): string {
+  return jwt.sign(
+    { userId, type: 'refresh', jti: randomUUID() } satisfies RefreshPayload & {
+      jti: string;
+    },
+    SECRET,
+    {
+      expiresIn: '30d',
+    },
+  );
+}
+
+export function verifyAccessToken(token: string): JWTPayload {
+  const decoded = jwt.verify(token, SECRET) as any;
+  if (decoded.type !== 'access') {
+    throw new jwt.JsonWebTokenError('Invalid token type');
+  }
+  return { userId: decoded.userId, email: decoded.email, role: decoded.role };
+}
+
+export function verifyRefreshToken(token: string): RefreshPayload {
+  const decoded = jwt.verify(token, SECRET) as any;
+  if (decoded.type !== 'refresh') {
+    throw new jwt.JsonWebTokenError('Invalid token type');
+  }
+  return { userId: decoded.userId, type: 'refresh' };
+}
+
+// Legacy alias — existing code uses signToken / verifyToken
+// Preserves legacy 24-hour token lifetime (not 15m access token)
+export function signToken(payload: JWTPayload): string {
+  return jwt.sign({ ...payload, type: 'access' }, SECRET, { expiresIn: '24h' });
+}
+
 export function verifyToken(token: string): JWTPayload {
-  return jwt.verify(token, SECRET) as unknown as JWTPayload;
+  return verifyAccessToken(token);
 }

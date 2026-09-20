@@ -7,6 +7,7 @@ import { prisma } from '../lib/prisma';
 import { authMiddleware } from '../middleware/auth';
 import type { AuthenticatedRequest } from '../middleware/auth';
 import { UploadType, FundType } from '@prisma/client';
+import { ApiError } from '../lib/api-error';
 
 const router = Router();
 
@@ -135,17 +136,13 @@ router.post(
     try {
       const { assessmentId } = req.body;
       if (!assessmentId) {
-        res
-          .status(400)
-          .json({ success: false, error: 'assessmentId is required' });
+        return next(ApiError.badRequest('assessmentId is required'));
         return;
       }
 
       const file = req.file;
       if (!file) {
-        res
-          .status(400)
-          .json({ success: false, error: 'Excel file is required' });
+        return next(ApiError.badRequest('Excel file is required'));
         return;
       }
 
@@ -176,7 +173,7 @@ router.post(
 
       const sheetName = workbook.SheetNames[0];
       if (!sheetName) {
-        res.status(400).json({ success: false, error: 'Excel sheet is empty' });
+        return next(ApiError.badRequest('Excel sheet is empty'));
         return;
       }
 
@@ -187,7 +184,7 @@ router.post(
       });
 
       if (rawRows.length === 0) {
-        res.status(400).json({ success: false, error: 'Excel sheet is empty' });
+        return next(ApiError.badRequest('Excel sheet is empty'));
         return;
       }
 

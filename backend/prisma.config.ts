@@ -17,4 +17,12 @@ export default defineConfig({
   datasource: {
     url: process.env['DATABASE_URL']!,
   },
+  // PgBouncer configuration for connection pooling
+  // Only used when PGBOUNCER_URL is set (local development or external pooler)
+  // Neon already has a built-in pooler via the connection string
+  datasources: {
+    db: {
+      url: process.env['PGBOUNCER_URL'] || process.env['DATABASE_URL']!,
+    },
+  },
 });

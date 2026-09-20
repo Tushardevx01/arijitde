@@ -8,6 +8,7 @@ import {
   calculate1YReturn,
   getSchemeNAV,
 } from '../amfiService';
+import { logger } from '../../lib/logger';
 
 /**
  * Efficiency Matrix with AMFI API (max 20 pts)
@@ -233,7 +234,7 @@ export async function scoreDimension(
       benchmarkComparisonScore = 3;
     }
   } catch (err) {
-    console.error('AMFI benchmark comparison failed:', err);
+    logger.error({ err }, 'AMFI benchmark comparison failed');
     benchmarkComparisonScore = 3; // Graceful degradation
   }
 

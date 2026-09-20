@@ -1,0 +1,30 @@
+{% extends "emails/base.njk" %}
+
+{% block content %}
+<h2>Welcome to FinAnalysis!</h2>
+
+<p>Hi {{ name | default("there") }},</p>
+
+<p>Welcome to FinAnalysis! We're excited to have you on board. Your account has been successfully created.</p>
+
+<p>Here's what you can do next:</p>
+
+<ul>
+    <li><strong>Complete your risk assessment</strong> - Get personalized portfolio recommendations</li>
+    <li><strong>Upload your portfolio</strong> - Upload your mutual fund statements for analysis</li>
+    <li><strong>Set your financial goals</strong> - Define your investment goals and timelines</li>
+    <li><strong>Book a consultation</strong> - Book a 1-on-1 session with our advisors</li>
+</ul>
+
+<div class="button" style="text-align: center; margin: 32px 0;">
+    <a href="{{ dashboardUrl }}" style="text-decoration: none; color: white;">Go to Dashboard</a>
+</div>
+
+<div class="info-box">
+    <p><strong>Need help?</strong> Our support team is here to help. Reply to this email or visit our <a href="{{ helpUrl }}">Help Center</a>.</p>
+</div>
+
+<p>Welcome to smarter investing!</p>
+
+<p>The FinAnalysis Team</p>
+{% endblock %}

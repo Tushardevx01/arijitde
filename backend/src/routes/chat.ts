@@ -4,6 +4,8 @@ import { z } from 'zod';
 import rateLimit from 'express-rate-limit';
 import { optionalAuthMiddleware } from '../middleware/auth';
 import type { AuthenticatedRequest } from '../middleware/auth';
+import { ApiError } from '../lib/api-error';
+import { logger } from '../lib/logger';
 
 const router = Router();
 
@@ -78,21 +80,12 @@ router.post(
     try {
       const apiKey = process.env.GROQ_API_KEY || process.env.GROK_API_KEY;
       if (!apiKey) {
-        res.status(500).json({
-          success: false,
-          error: 'Groq API Key is not configured on the server.',
-        });
-        return;
+        return next(ApiError.internal('Groq API Key is not configured on the server.'));
       }
 
       const parsed = chatRequestSchema.safeParse(req.body);
       if (!parsed.success) {
-        res.status(400).json({
-          success: false,
-          error:
-            'Invalid request body. Messages array with role and content is required.',
-        });
-        return;
+        return next(ApiError.badRequest('Invalid request body. Messages array with role and content is required.'));
       }
 
       const { messages } = parsed.data;
@@ -142,25 +135,17 @@ router.post(
             if (reply) break;
           } else {
             lastError = await response.text();
-            console.warn(`Groq model ${model} attempt failed:`, lastError);
+            logger.warn({ model, lastError }, 'Groq model attempt failed');
           }
         } catch (err: any) {
           lastError = err?.message || String(err);
-          console.warn(`Groq model ${model} request error:`, lastError);
+          logger.warn({ model, lastError }, 'Groq model request error');
         }
       }
 
       if (!reply) {
-        console.error(
-          'All candidate Groq models failed. Last error:',
-          lastError,
-        );
-        res.status(502).json({
-          success: false,
-          error:
-            'Failed to generate response from AI model. Please check Groq API status.',
-        });
-        return;
+        logger.error({ lastError }, 'All candidate Groq models failed');
+        return next(ApiError.badRequest('Failed to generate response from AI model. Please check Groq API status.'));
       }
 
       res.json({

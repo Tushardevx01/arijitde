@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from "react";
+import { csrfFetch } from '@/lib/csrf';
 import { 
   LogOut, 
   LayoutGrid, 
@@ -368,8 +369,6 @@ export default function ClientDashboard() {
 
   const [rememberMe, setRememberMe] = useState(true);
 
-  const backendUrl = process.env.NEXT_PUBLIC_API_URL || "";
-
   const setAuthSession = (token: string, user: any, remember: boolean) => {
     localStorage.setItem("token", token);
     localStorage.setItem("user", JSON.stringify(user));
@@ -451,7 +450,7 @@ export default function ClientDashboard() {
     try {
       setFetchingQueries(true);
       const headers = { 'Authorization': `Bearer ${token}` };
-      const res = await fetch(`${backendUrl}/api/support/my-queries`, { headers });
+      const res = await fetch(`/api/support/my-queries`, { headers });
       if (!res.ok) throw new Error('Failed to retrieve past queries');
       const resData = await res.json();
       setSupportQueries(resData.data || []);
@@ -479,7 +478,7 @@ export default function ClientDashboard() {
         'Content-Type': 'application/json'
       };
 
-      const res = await fetch(`${backendUrl}/api/support/query`, {
+      const res = await fetch(`/api/support/query`, {
         method: 'POST',
         headers,
         body: JSON.stringify({
@@ -517,7 +516,7 @@ export default function ClientDashboard() {
       const headers = { "Authorization": `Bearer ${token}` };
 
       // 1. Me check
-      const meRes = await fetch(`${backendUrl}/api/auth/me`, { headers });
+      const meRes = await fetch(`/api/auth/me`, { headers });
       if (meRes.status === 401) {
         localStorage.removeItem("token");
         localStorage.removeItem("user");
@@ -532,7 +531,7 @@ export default function ClientDashboard() {
       }
 
       // 2. Fetch assessments
-      const assessRes = await fetch(`${backendUrl}/api/assess`, { headers });
+      const assessRes = await fetch(`/api/assess`, { headers });
       const assessData = await assessRes.json();
       const userAssessments = assessData.success ? assessData.data : [];
 
@@ -553,7 +552,7 @@ export default function ClientDashboard() {
       }
 
       // 3. Fetch portfolios
-      const portRes = await fetch(`${backendUrl}/api/portfolio`, { headers });
+      const portRes = await fetch(`/api/portfolio`, { headers });
       const portData = await portRes.json();
       const userPortfolios = portData.success ? portData.data : [];
 
@@ -571,7 +570,7 @@ export default function ClientDashboard() {
 
       // 4. Fetch official matching ExistingClient and Folios data
       try {
-        const ecRes = await fetch(`${backendUrl}/api/portfolio/client-data`, { headers });
+        const ecRes = await fetch(`/api/portfolio/client-data`, { headers });
         const ecData = await ecRes.json();
         if (ecData.success && ecData.data) {
           setExistingClientData(ecData.data);
@@ -591,7 +590,7 @@ export default function ClientDashboard() {
 
   const calculatePortfolioScore = async (portfolioId: string) => {
     try {
-      const res = await fetch(`${backendUrl}/api/score/${portfolioId}`, {
+      const res = await fetch(`/api/score/${portfolioId}`, {
         method: "POST",
         headers: { "Authorization": `Bearer ${token}` }
       });
@@ -631,7 +630,7 @@ export default function ClientDashboard() {
         "Authorization": `Bearer ${token}`,
         "Content-Type": "application/json"
       };
-      const res = await fetch(`${backendUrl}/api/leads/book-session`, {
+      const res = await fetch(`/api/leads/book-session`, {
         method: "POST",
         headers,
         body: JSON.stringify({
@@ -667,7 +666,7 @@ export default function ClientDashboard() {
     setStatusMsg("Registering premium portfolio review discussion booking...");
 
     try {
-      const res = await fetch(`${backendUrl}/api/leads`, {
+      const res = await fetch(`/api/leads`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -738,7 +737,7 @@ export default function ClientDashboard() {
           currentValue: f.aum
         }));
 
-      const res = await fetch(`${backendUrl}/api/portfolio/manual`, {
+      const res = await fetch(`/api/portfolio/manual`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -789,7 +788,7 @@ export default function ClientDashboard() {
       formData.append("file", uploadedFile);
       formData.append("assessmentId", activeAssessmentId);
 
-      const res = await fetch(`${backendUrl}/api/portfolio/upload`, {
+      const res = await fetch(`/api/portfolio/upload`, {
         method: "POST",
         headers: { "Authorization": `Bearer ${token}` },
         body: formData
@@ -856,7 +855,7 @@ export default function ClientDashboard() {
         startDate: new Date(r.startDate).toISOString()
       }));
 
-      const res = await fetch(`${backendUrl}/api/portfolio/manual`, {
+      const res = await fetch(`/api/portfolio/manual`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -928,7 +927,7 @@ export default function ClientDashboard() {
     setStatusMsg("Updating your lifecycle diagnostics target...");
 
     try {
-      const res = await fetch(`${backendUrl}/api/assess`, {
+      const res = await fetch(`/api/assess`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -1000,7 +999,7 @@ export default function ClientDashboard() {
 
     setAuthenticating(true);
     try {
-      const res = await fetch(`${backendUrl}/api/auth/pan/login`, {
+      const res = await csrfFetch(`/api/auth/pan/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ pan: trimmedPan, password: clientPassword }),
@@ -1044,7 +1043,7 @@ export default function ClientDashboard() {
 
     setAuthenticating(true);
     try {
-      const res = await fetch(`${backendUrl}/api/auth/password/reset/send-otp`, {
+      const res = await csrfFetch(`/api/auth/password/reset/send-otp`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email: trimmedEmail }),
@@ -1084,7 +1083,7 @@ export default function ClientDashboard() {
 
     setAuthenticating(true);
     try {
-      const res = await fetch(`${backendUrl}/api/auth/password/reset/confirm`, {
+      const res = await csrfFetch(`/api/auth/password/reset/confirm`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email: trimmedEmail, otp: trimmedOtp, password: trimmedPass }),

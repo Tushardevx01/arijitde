@@ -13,7 +13,6 @@ export default function Navbar({ isLoaded = true, activePath = '/', onBookCallCl
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [dashboardUrl, setDashboardUrl] = useState('/onboarding');
   const [userRole, setUserRole] = useState<string | null>(null);
-  const backendUrl = process.env.NEXT_PUBLIC_API_URL || "";
   const lastScrollY = useRef(0);
   const ticking = useRef(false);
 
@@ -74,7 +73,7 @@ export default function Navbar({ isLoaded = true, activePath = '/', onBookCallCl
     }
 
     if (token) {
-      fetch(`${backendUrl}/api/auth/me`, {
+      fetch(`/api/auth/me`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }

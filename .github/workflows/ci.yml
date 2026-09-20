@@ -1,4 +1,4 @@
-name: CI - Code Quality & Build Checks
+name: CI - Code Quality, Tests & Build
 
 on:
   push:
@@ -12,7 +12,7 @@ concurrency:
 
 jobs:
   backend-check:
-    name: Backend Checks (Prisma & Types)
+    name: Backend Checks (Prisma, Types & Tests)
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -41,8 +41,29 @@ jobs:
       - name: Type check backend
         run: npx tsc --noEmit
 
+      - name: Run backend tests
+        run: npm test -- --ci --coverage --maxWorkers=2
+        env:
+          NODE_ENV: test
+          JWT_SECRET: ${{ secrets.JWT_SECRET }}
+          OTP_SECRET: ${{ secrets.OTP_SECRET }}
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
+          GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
+          GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
+          GROK_API_KEY: ${{ secrets.GROK_API_KEY }}
+          GMAIL_USER: ${{ secrets.GMAIL_USER }}
+          FRONTEND_URL: http://localhost:3000
+
+      - name: Upload backend coverage
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-coverage
+          path: backend/coverage
+          retention-days: 7
+
   frontend-check:
-    name: Frontend Checks (Lint, Types & Build)
+    name: Frontend Checks (Lint, Types, Tests & Build)
     runs-on: ubuntu-latest
     defaults:
       run:

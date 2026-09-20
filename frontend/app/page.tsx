@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef, useCallback } from "react";
+import { csrfFetch } from '@/lib/csrf';
 import { KnobSlider } from "@/components/ui/knob-slider";
 import CalculatorsCarousel from "@/components/CalculatorsCarousel";
 import SoftBoxBlurBg from "@/components/SoftBoxBlurBg";
@@ -320,8 +321,7 @@ export default function Home() {
       setContactError(null);
       setContactSuccess(false);
 
-      const backendUrl = process.env.NEXT_PUBLIC_API_URL || '';
-      const response = await fetch(`${backendUrl}/api/contact`, {
+      const response = await csrfFetch(`/api/contact`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

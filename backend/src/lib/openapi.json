@@ -1,0 +1,3396 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "FinAnalysis API",
+    "version": "1.0.0",
+    "description": "FinAnalysis API - Financial analysis and advisory platform. All endpoints are prefixed with `/api/v1`. Uses RFC 7807 Problem Details for errors."
+  },
+  "servers": [
+    {
+      "url": "/api/v1",
+      "description": "Current API version"
+    },
+    {
+      "url": "/api",
+      "description": "Legacy API (deprecated)"
+    }
+  ],
+  "components": {
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer"
+      },
+      "csrfToken": {
+        "type": "apiKey",
+        "in": "header",
+        "name": "X-CSRF-Token"
+      },
+      "cookieAuth": {
+        "type": "apiKey",
+        "in": "cookie",
+        "name": "access_token"
+      }
+    },
+    "schemas": {
+      "ProblemDetails": {
+        "type": "object",
+        "required": [
+          "type",
+          "title",
+          "status",
+          "detail",
+          "instance"
+        ],
+        "properties": {
+          "type": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "status": {
+            "type": "integer"
+          },
+          "detail": {
+            "type": "string"
+          },
+          "instance": {
+            "type": "string"
+          }
+        }
+      },
+      "ErrorResponse": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/ProblemDetails"
+          }
+        ]
+      },
+      "SuccessResponse": {
+        "type": "object",
+        "required": [
+          "success",
+          "data"
+        ],
+        "properties": {
+          "success": {
+            "type": "boolean"
+          },
+          "data": {
+            "type": "object"
+          }
+        }
+      },
+      "User": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string",
+            "nullable": true
+          }
+        }
+      },
+      "PaginatedData": {
+        "type": "object",
+        "required": [
+          "items",
+          "total"
+        ],
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "object"
+            }
+          },
+          "total": {
+            "type": "integer"
+          },
+          "page": {
+            "type": "integer"
+          },
+          "nextCursor": {
+            "type": "string",
+            "nullable": true
+          },
+          "nextCursorId": {
+            "type": "string",
+            "nullable": true
+          }
+        }
+      },
+      "PaginatedResponse": {
+        "type": "object",
+        "required": [
+          "success",
+          "data"
+        ],
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "const": true
+          },
+          "data": {
+            "$ref": "#/components/schemas/PaginatedData"
+          }
+        }
+      },
+      "Lead": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "userId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          },
+          "phone": {
+            "type": "string"
+          },
+          "scoreId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "slot": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "NEW",
+              "CONTACTED",
+              "QUALIFIED",
+              "CLOSED"
+            ]
+          },
+          "notes": {
+            "type": "string",
+            "nullable": true
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "user": {
+            "$ref": "#/components/schemas/User"
+          }
+        }
+      },
+      "AdvisorySession": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "userId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "preferredSlot1": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "preferredSlot2": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "preferredSlot3": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "confirmedSlot": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "googleMeetLink": {
+            "type": "string",
+            "format": "uri",
+            "nullable": true
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "PENDING",
+              "CONFIRMED",
+              "COMPLETED",
+              "CANCELLED",
+              "REFUNDED"
+            ]
+          },
+          "notes": {
+            "type": "string",
+            "nullable": true
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "user": {
+            "$ref": "#/components/schemas/User"
+          }
+        }
+      },
+      "Assessment": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "userId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "age": {
+            "type": "integer"
+          },
+          "goal": {
+            "type": "string",
+            "enum": [
+              "WEALTH_CREATION",
+              "RETIREMENT",
+              "CHILD_EDUCATION",
+              "HOUSE_PURCHASE",
+              "MARRIAGE",
+              "TAX_SAVING",
+              "PASSIVE_INCOME",
+              "NOT_SURE_YET"
+            ]
+          },
+          "ageRange": {
+            "type": "string",
+            "nullable": true
+          },
+          "lifeStage": {
+            "type": "string",
+            "nullable": true
+          },
+          "investmentTenure": {
+            "type": "string",
+            "nullable": true
+          },
+          "isCompletePortfolio": {
+            "type": "boolean",
+            "nullable": true
+          },
+          "investmentStyle": {
+            "type": "string",
+            "nullable": true
+          },
+          "expectedReturn": {
+            "type": "string",
+            "nullable": true
+          },
+          "riskBehavior": {
+            "type": "string",
+            "nullable": true
+          },
+          "monthlyInvestment": {
+            "type": "string",
+            "nullable": true
+          },
+          "emergencyFund": {
+            "type": "string",
+            "nullable": true
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "Portfolio": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "userId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "assessmentId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "name": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string",
+            "nullable": true
+          },
+          "totalValue": {
+            "type": "number",
+            "nullable": true
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "Score": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "portfolioId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "total": {
+            "type": "number"
+          },
+          "goalAlignment": {
+            "type": "number"
+          },
+          "assetAlloc": {
+            "type": "number"
+          },
+          "diversification": {
+            "type": "number"
+          },
+          "discipline": {
+            "type": "number"
+          },
+          "efficiency": {
+            "type": "number"
+          },
+          "tag": {
+            "type": "string"
+          },
+          "insights": {
+            "type": "string",
+            "nullable": true
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "portfolio": {
+            "$ref": "#/components/schemas/Portfolio"
+          }
+        }
+      },
+      "Folio": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "clientName": {
+            "type": "string"
+          },
+          "clientPan": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string",
+            "nullable": true
+          },
+          "mobile": {
+            "type": "string",
+            "nullable": true
+          },
+          "folioNumber": {
+            "type": "string"
+          },
+          "schemeName": {
+            "type": "string"
+          },
+          "aum": {
+            "type": "number",
+            "nullable": true
+          },
+          "purchaseValue": {
+            "type": "number",
+            "nullable": true
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "ExistingClient": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          },
+          "pan": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string",
+            "nullable": true
+          },
+          "mobile": {
+            "type": "string",
+            "nullable": true
+          },
+          "city": {
+            "type": "string",
+            "nullable": true
+          },
+          "aum": {
+            "type": "number",
+            "nullable": true
+          },
+          "purchaseValue": {
+            "type": "number",
+            "nullable": true
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "folios": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Folio"
+            }
+          }
+        }
+      },
+      "ContactMessage": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string",
+            "format": "email"
+          },
+          "phone": {
+            "type": "string",
+            "nullable": true
+          },
+          "subject": {
+            "type": "string",
+            "nullable": true
+          },
+          "message": {
+            "type": "string"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "SupportQuery": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "userId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "subject": {
+            "type": "string"
+          },
+          "message": {
+            "type": "string"
+          },
+          "priority": {
+            "type": "string",
+            "enum": [
+              "LOW",
+              "MEDIUM",
+              "HIGH",
+              "URGENT"
+            ]
+          },
+          "status": {
+            "type": "string",
+            "nullable": true
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      }
+    },
+    "responses": {
+      "ValidationError": {
+        "description": "Validation error",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/ErrorResponse"
+            },
+            "examples": {
+              "validationError": {
+                "summary": "Validation error",
+                "value": {
+                  "type": "https://tools.ietf.org/html/rfc7807#section-3.1",
+                  "title": "Validation Error",
+                  "status": 400,
+                  "detail": "email: Invalid email format",
+                  "instance": "/auth/login"
+                }
+              },
+              "unauthorized": {
+                "summary": "Unauthorized",
+                "value": {
+                  "type": "https://tools.ietf.org/html/rfc7807#section-3.1",
+                  "title": "Unauthorized",
+                  "status": 401,
+                  "detail": "Invalid or expired token",
+                  "instance": "/portfolio"
+                }
+              },
+              "notFound": {
+                "summary": "Not found",
+                "value": {
+                  "type": "https://tools.ietf.org/html/rfc7807#section-3.1",
+                  "title": "Not Found",
+                  "status": 404,
+                  "detail": "Portfolio not found",
+                  "instance": "/portfolio/550e8400-e29b-41d4-a716-446655440002"
+                }
+              }
+            }
+          }
+        }
+      },
+      "Unauthorized": {
+        "description": "Unauthorized - Invalid or missing authentication",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/ErrorResponse"
+            },
+            "examples": {
+              "validationError": {
+                "summary": "Validation error",
+                "value": {
+                  "type": "https://tools.ietf.org/html/rfc7807#section-3.1",
+                  "title": "Validation Error",
+                  "status": 400,
+                  "detail": "email: Invalid email format",
+                  "instance": "/auth/login"
+                }
+              },
+              "unauthorized": {
+                "summary": "Unauthorized",
+                "value": {
+                  "type": "https://tools.ietf.org/html/rfc7807#section-3.1",
+                  "title": "Unauthorized",
+                  "status": 401,
+                  "detail": "Invalid or expired token",
+                  "instance": "/portfolio"
+                }
+              },
+              "notFound": {
+                "summary": "Not found",
+                "value": {
+                  "type": "https://tools.ietf.org/html/rfc7807#section-3.1",
+                  "title": "Not Found",
+                  "status": 404,
+                  "detail": "Portfolio not found",
+                  "instance": "/portfolio/550e8400-e29b-41d4-a716-446655440002"
+                }
+              }
+            }
+          }
+        }
+      },
+      "Forbidden": {
+        "description": "Forbidden - Insufficient permissions",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/ErrorResponse"
+            },
+            "examples": {
+              "validationError": {
+                "summary": "Validation error",
+                "value": {
+                  "type": "https://tools.ietf.org/html/rfc7807#section-3.1",
+                  "title": "Validation Error",
+                  "status": 400,
+                  "detail": "email: Invalid email format",
+                  "instance": "/auth/login"
+                }
+              },
+              "unauthorized": {
+                "summary": "Unauthorized",
+                "value": {
+                  "type": "https://tools.ietf.org/html/rfc7807#section-3.1",
+                  "title": "Unauthorized",
+                  "status": 401,
+                  "detail": "Invalid or expired token",
+                  "instance": "/portfolio"
+                }
+              },
+              "notFound": {
+                "summary": "Not found",
+                "value": {
+                  "type": "https://tools.ietf.org/html/rfc7807#section-3.1",
+                  "title": "Not Found",
+                  "status": 404,
+                  "detail": "Portfolio not found",
+                  "instance": "/portfolio/550e8400-e29b-41d4-a716-446655440002"
+                }
+              }
+            }
+          }
+        }
+      },
+      "NotFound": {
+        "description": "Resource not found",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/ErrorResponse"
+            },
+            "examples": {
+              "validationError": {
+                "summary": "Validation error",
+                "value": {
+                  "type": "https://tools.ietf.org/html/rfc7807#section-3.1",
+                  "title": "Validation Error",
+                  "status": 400,
+                  "detail": "email: Invalid email format",
+                  "instance": "/auth/login"
+                }
+              },
+              "unauthorized": {
+                "summary": "Unauthorized",
+                "value": {
+                  "type": "https://tools.ietf.org/html/rfc7807#section-3.1",
+                  "title": "Unauthorized",
+                  "status": 401,
+                  "detail": "Invalid or expired token",
+                  "instance": "/portfolio"
+                }
+              },
+              "notFound": {
+                "summary": "Not found",
+                "value": {
+                  "type": "https://tools.ietf.org/html/rfc7807#section-3.1",
+                  "title": "Not Found",
+                  "status": 404,
+                  "detail": "Portfolio not found",
+                  "instance": "/portfolio/550e8400-e29b-41d4-a716-446655440002"
+                }
+              }
+            }
+          }
+        }
+      },
+      "TooManyRequests": {
+        "description": "Rate limit exceeded",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/ErrorResponse"
+            },
+            "examples": {
+              "validationError": {
+                "summary": "Validation error",
+                "value": {
+                  "type": "https://tools.ietf.org/html/rfc7807#section-3.1",
+                  "title": "Validation Error",
+                  "status": 400,
+                  "detail": "email: Invalid email format",
+                  "instance": "/auth/login"
+                }
+              },
+              "unauthorized": {
+                "summary": "Unauthorized",
+                "value": {
+                  "type": "https://tools.ietf.org/html/rfc7807#section-3.1",
+                  "title": "Unauthorized",
+                  "status": 401,
+                  "detail": "Invalid or expired token",
+                  "instance": "/portfolio"
+                }
+              },
+              "notFound": {
+                "summary": "Not found",
+                "value": {
+                  "type": "https://tools.ietf.org/html/rfc7807#section-3.1",
+                  "title": "Not Found",
+                  "status": 404,
+                  "detail": "Portfolio not found",
+                  "instance": "/portfolio/550e8400-e29b-41d4-a716-446655440002"
+                }
+              }
+            }
+          }
+        }
+      },
+      "ServerError": {
+        "description": "Internal server error",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/ErrorResponse"
+            },
+            "examples": {
+              "validationError": {
+                "summary": "Validation error",
+                "value": {
+                  "type": "https://tools.ietf.org/html/rfc7807#section-3.1",
+                  "title": "Validation Error",
+                  "status": 400,
+                  "detail": "email: Invalid email format",
+                  "instance": "/auth/login"
+                }
+              },
+              "unauthorized": {
+                "summary": "Unauthorized",
+                "value": {
+                  "type": "https://tools.ietf.org/html/rfc7807#section-3.1",
+                  "title": "Unauthorized",
+                  "status": 401,
+                  "detail": "Invalid or expired token",
+                  "instance": "/portfolio"
+                }
+              },
+              "notFound": {
+                "summary": "Not found",
+                "value": {
+                  "type": "https://tools.ietf.org/html/rfc7807#section-3.1",
+                  "title": "Not Found",
+                  "status": 404,
+                  "detail": "Portfolio not found",
+                  "instance": "/portfolio/550e8400-e29b-41d4-a716-446655440002"
+                }
+              }
+            }
+          }
+        }
+      },
+      "Conflict": {
+        "description": "Resource conflict",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/ErrorResponse"
+            },
+            "examples": {
+              "validationError": {
+                "summary": "Validation error",
+                "value": {
+                  "type": "https://tools.ietf.org/html/rfc7807#section-3.1",
+                  "title": "Validation Error",
+                  "status": 400,
+                  "detail": "email: Invalid email format",
+                  "instance": "/auth/login"
+                }
+              },
+              "unauthorized": {
+                "summary": "Unauthorized",
+                "value": {
+                  "type": "https://tools.ietf.org/html/rfc7807#section-3.1",
+                  "title": "Unauthorized",
+                  "status": 401,
+                  "detail": "Invalid or expired token",
+                  "instance": "/portfolio"
+                }
+              },
+              "notFound": {
+                "summary": "Not found",
+                "value": {
+                  "type": "https://tools.ietf.org/html/rfc7807#section-3.1",
+                  "title": "Not Found",
+                  "status": 404,
+                  "detail": "Portfolio not found",
+                  "instance": "/portfolio/550e8400-e29b-41d4-a716-446655440002"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "paths": {
+    "/health": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/auth/register": {
+      "post": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "Register new user",
+        "operationId": "registerUser",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "email",
+                  "password",
+                  "name"
+                ],
+                "properties": {
+                  "email": {
+                    "type": "string",
+                    "format": "email"
+                  },
+                  "password": {
+                    "type": "string",
+                    "minLength": 8
+                  },
+                  "name": {
+                    "type": "string"
+                  },
+                  "phone": {
+                    "type": "string"
+                  }
+                }
+              },
+              "examples": {
+                "valid": {
+                  "summary": "Valid registration",
+                  "value": {
+                    "email": "john.doe@example.com",
+                    "password": "SecurePass123!",
+                    "name": "John Doe",
+                    "phone": "+1-555-0123"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "User registered",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessResponse"
+                },
+                "examples": {
+                  "success": {
+                    "summary": "Registration successful",
+                    "value": {
+                      "success": true,
+                      "data": {
+                        "user": {
+                          "id": "550e8400-e29b-41d4-a716-446655440000",
+                          "email": "john.doe@example.com",
+                          "name": "John Doe"
+                        },
+                        "accessToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/ValidationError"
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          }
+        }
+      }
+    },
+    "/auth/login": {
+      "post": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "Login with email/password",
+        "operationId": "loginUser",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "email",
+                  "password"
+                ],
+                "properties": {
+                  "email": {
+                    "type": "string",
+                    "format": "email"
+                  },
+                  "password": {
+                    "type": "string"
+                  }
+                }
+              },
+              "examples": {
+                "valid": {
+                  "summary": "Valid login",
+                  "value": {
+                    "email": "john.doe@example.com",
+                    "password": "SecurePass123!"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Login successful",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessResponse"
+                },
+                "examples": {
+                  "success": {
+                    "summary": "Login successful",
+                    "value": {
+                      "success": true,
+                      "data": {
+                        "user": {
+                          "id": "550e8400-e29b-41d4-a716-446655440000",
+                          "email": "john.doe@example.com",
+                          "name": "John Doe"
+                        },
+                        "accessToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/ValidationError"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          }
+        }
+      }
+    },
+    "/auth/google": {
+      "post": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "Google OAuth login",
+        "operationId": "googleLogin",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "credential"
+                ],
+                "properties": {
+                  "credential": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Google login successful"
+          },
+          "400": {
+            "$ref": "#/components/responses/ValidationError"
+          }
+        }
+      }
+    },
+    "/auth/refresh": {
+      "post": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "Refresh access token",
+        "operationId": "refreshToken",
+        "responses": {
+          "200": {
+            "description": "Token refreshed"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          }
+        },
+        "security": [
+          {
+            "cookieAuth": []
+          }
+        ]
+      }
+    },
+    "/auth/logout": {
+      "post": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "Logout user",
+        "operationId": "logoutUser",
+        "responses": {
+          "200": {
+            "description": "Logged out"
+          }
+        },
+        "security": [
+          {
+            "cookieAuth": []
+          }
+        ]
+      }
+    },
+    "/auth/me": {
+      "get": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "Get current user profile",
+        "operationId": "getCurrentUser",
+        "responses": {
+          "200": {
+            "description": "User profile",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessResponse"
+                },
+                "examples": {
+                  "success": {
+                    "summary": "Current user profile",
+                    "value": {
+                      "success": true,
+                      "data": {
+                        "user": {
+                          "id": "550e8400-e29b-41d4-a716-446655440000",
+                          "email": "john.doe@example.com",
+                          "name": "John Doe",
+                          "role": "USER",
+                          "createdAt": "2024-01-10T08:00:00.000Z"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "cookieAuth": []
+          }
+        ]
+      }
+    },
+    "/auth/forgot-password": {
+      "post": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "Request password reset OTP",
+        "operationId": "forgotPassword",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "email"
+                ],
+                "properties": {
+                  "email": {
+                    "type": "string",
+                    "format": "email"
+                  }
+                }
+              },
+              "examples": {
+                "valid": {
+                  "summary": "Request password reset",
+                  "value": {
+                    "email": "john.doe@example.com"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OTP sent"
+          },
+          "400": {
+            "$ref": "#/components/responses/ValidationError"
+          }
+        }
+      }
+    },
+    "/auth/reset-password": {
+      "post": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "Reset password with OTP",
+        "operationId": "resetPassword",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "email",
+                  "otp",
+                  "newPassword"
+                ],
+                "properties": {
+                  "email": {
+                    "type": "string",
+                    "format": "email"
+                  },
+                  "otp": {
+                    "type": "string"
+                  },
+                  "newPassword": {
+                    "type": "string",
+                    "minLength": 8
+                  }
+                }
+              },
+              "examples": {
+                "valid": {
+                  "summary": "Reset password with OTP",
+                  "value": {
+                    "email": "john.doe@example.com",
+                    "otp": "123456",
+                    "newPassword": "NewSecurePass123!"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Password reset"
+          },
+          "400": {
+            "$ref": "#/components/responses/ValidationError"
+          }
+        }
+      }
+    },
+    "/auth/verify-otp": {
+      "post": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "Verify OTP",
+        "operationId": "verifyOtp",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "email",
+                  "otp"
+                ],
+                "properties": {
+                  "email": {
+                    "type": "string",
+                    "format": "email"
+                  },
+                  "otp": {
+                    "type": "string"
+                  }
+                }
+              },
+              "examples": {
+                "valid": {
+                  "summary": "Verify OTP",
+                  "value": {
+                    "email": "john.doe@example.com",
+                    "otp": "123456"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OTP verified"
+          },
+          "400": {
+            "$ref": "#/components/responses/ValidationError"
+          }
+        }
+      }
+    },
+    "/assess": {
+      "post": {
+        "tags": [
+          "assess"
+        ],
+        "summary": "Create risk assessment",
+        "operationId": "createAssessment",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "age",
+                  "goal"
+                ],
+                "properties": {
+                  "age": {
+                    "type": "integer"
+                  },
+                  "goal": {
+                    "type": "string",
+                    "enum": [
+                      "WEALTH_CREATION",
+                      "RETIREMENT",
+                      "CHILD_EDUCATION",
+                      "HOUSE_PURCHASE",
+                      "MARRIAGE",
+                      "TAX_SAVING",
+                      "PASSIVE_INCOME",
+                      "NOT_SURE_YET"
+                    ]
+                  },
+                  "ageRange": {
+                    "type": "string"
+                  },
+                  "lifeStage": {
+                    "type": "string"
+                  },
+                  "investmentTenure": {
+                    "type": "string"
+                  },
+                  "isCompletePortfolio": {
+                    "type": "boolean"
+                  },
+                  "investmentStyle": {
+                    "type": "string"
+                  },
+                  "expectedReturn": {
+                    "type": "string"
+                  },
+                  "riskBehavior": {
+                    "type": "string"
+                  },
+                  "monthlyInvestment": {
+                    "type": "string"
+                  },
+                  "emergencyFund": {
+                    "type": "string"
+                  }
+                }
+              },
+              "examples": {
+                "conservative": {
+                  "summary": "Conservative investor",
+                  "value": {
+                    "age": 45,
+                    "goal": "RETIREMENT",
+                    "ageRange": "40-50",
+                    "lifeStage": "MID_CAREER",
+                    "investmentTenure": "10-15_YEARS",
+                    "isCompletePortfolio": false,
+                    "investmentStyle": "CONSERVATIVE",
+                    "expectedReturn": "8-10%",
+                    "riskBehavior": "LOW_RISK",
+                    "monthlyInvestment": "50000-100000",
+                    "emergencyFund": "6-12_MONTHS"
+                  }
+                },
+                "aggressive": {
+                  "summary": "Aggressive investor",
+                  "value": {
+                    "age": 30,
+                    "goal": "WEALTH_CREATION",
+                    "ageRange": "25-35",
+                    "lifeStage": "EARLY_CAREER",
+                    "investmentTenure": "15-20_YEARS",
+                    "isCompletePortfolio": false,
+                    "investmentStyle": "AGGRESSIVE",
+                    "expectedReturn": "15%+",
+                    "riskBehavior": "HIGH_RISK",
+                    "monthlyInvestment": "100000+",
+                    "emergencyFund": "3-6_MONTHS"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Assessment created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessResponse"
+                },
+                "examples": {
+                  "success": {
+                    "summary": "Assessment created",
+                    "value": {
+                      "success": true,
+                      "data": {
+                        "id": "550e8400-e29b-41d4-a716-446655440001",
+                        "userId": "550e8400-e29b-41d4-a716-446655440000",
+                        "age": 30,
+                        "goal": "WEALTH_CREATION",
+                        "riskBehavior": "HIGH_RISK",
+                        "createdAt": "2024-01-15T10:30:00.000Z",
+                        "updatedAt": "2024-01-15T10:30:00.000Z"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/ValidationError"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "cookieAuth": []
+          }
+        ]
+      }
+    },
+    "/assess/{id}": {
+      "get": {
+        "tags": [
+          "assess"
+        ],
+        "summary": "Get assessment by ID",
+        "operationId": "getAssessment",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Assessment found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessResponse"
+                },
+                "examples": {
+                  "success": {
+                    "summary": "Assessment found",
+                    "value": {
+                      "success": true,
+                      "data": {
+                        "id": "550e8400-e29b-41d4-a716-446655440001",
+                        "userId": "550e8400-e29b-41d4-a716-446655440000",
+                        "age": 30,
+                        "goal": "WEALTH_CREATION",
+                        "riskBehavior": "HIGH_RISK",
+                        "createdAt": "2024-01-15T10:30:00.000Z",
+                        "updatedAt": "2024-01-15T10:30:00.000Z"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "cookieAuth": []
+          }
+        ]
+      }
+    },
+    "/assess/user/{userId}": {
+      "get": {
+        "tags": [
+          "assess"
+        ],
+        "summary": "Get user's latest assessment",
+        "operationId": "getUserAssessment",
+        "parameters": [
+          {
+            "name": "userId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Assessment found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessResponse"
+                },
+                "examples": {
+                  "success": {
+                    "summary": "User assessment",
+                    "value": {
+                      "success": true,
+                      "data": {
+                        "id": "550e8400-e29b-41d4-a716-446655440001",
+                        "userId": "550e8400-e29b-41d4-a716-446655440000",
+                        "age": 30,
+                        "goal": "WEALTH_CREATION",
+                        "riskBehavior": "HIGH_RISK",
+                        "createdAt": "2024-01-15T10:30:00.000Z",
+                        "updatedAt": "2024-01-15T10:30:00.000Z"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "cookieAuth": []
+          }
+        ]
+      }
+    },
+    "/portfolio": {
+      "post": {
+        "tags": [
+          "portfolio"
+        ],
+        "summary": "Create portfolio",
+        "operationId": "createPortfolio",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "name",
+                  "assessmentId"
+                ],
+                "properties": {
+                  "name": {
+                    "type": "string"
+                  },
+                  "assessmentId": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  "description": {
+                    "type": "string"
+                  }
+                }
+              },
+              "examples": {
+                "valid": {
+                  "summary": "Create portfolio",
+                  "value": {
+                    "name": "Retirement Portfolio",
+                    "assessmentId": "550e8400-e29b-41d4-a716-446655440001",
+                    "description": "Long-term retirement savings"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Portfolio created"
+          },
+          "400": {
+            "$ref": "#/components/responses/ValidationError"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "cookieAuth": []
+          }
+        ]
+      }
+    },
+    "/portfolio/{id}": {
+      "get": {
+        "tags": [
+          "portfolio"
+        ],
+        "summary": "Get portfolio by ID",
+        "operationId": "getPortfolio",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Portfolio found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessResponse"
+                },
+                "examples": {
+                  "success": {
+                    "summary": "Portfolio found",
+                    "value": {
+                      "success": true,
+                      "data": {
+                        "id": "550e8400-e29b-41d4-a716-446655440002",
+                        "userId": "550e8400-e29b-41d4-a716-446655440000",
+                        "assessmentId": "550e8400-e29b-41d4-a716-446655440001",
+                        "name": "Retirement Portfolio",
+                        "description": "Long-term retirement savings",
+                        "totalValue": 1500000,
+                        "createdAt": "2024-01-15T10:45:00.000Z",
+                        "updatedAt": "2024-01-15T10:45:00.000Z"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "cookieAuth": []
+          }
+        ]
+      },
+      "put": {
+        "tags": [
+          "portfolio"
+        ],
+        "summary": "Update portfolio",
+        "operationId": "updatePortfolio",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string"
+                  },
+                  "description": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Portfolio updated"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "cookieAuth": []
+          }
+        ]
+      },
+      "delete": {
+        "tags": [
+          "portfolio"
+        ],
+        "summary": "Delete portfolio (soft delete)",
+        "operationId": "deletePortfolio",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Portfolio deleted"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "cookieAuth": []
+          }
+        ]
+      }
+    },
+    "/portfolio/user/{userId}": {
+      "get": {
+        "tags": [
+          "portfolio"
+        ],
+        "summary": "Get user portfolios",
+        "operationId": "getUserPortfolios",
+        "parameters": [
+          {
+            "name": "userId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of portfolios",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessResponse"
+                },
+                "examples": {
+                  "success": {
+                    "summary": "User portfolios",
+                    "value": {
+                      "success": true,
+                      "data": [
+                        {
+                          "id": "550e8400-e29b-41d4-a716-446655440002",
+                          "userId": "550e8400-e29b-41d4-a716-446655440000",
+                          "assessmentId": "550e8400-e29b-41d4-a716-446655440001",
+                          "name": "Retirement Portfolio",
+                          "description": "Long-term retirement savings",
+                          "totalValue": 1500000,
+                          "createdAt": "2024-01-15T10:45:00.000Z",
+                          "updatedAt": "2024-01-15T10:45:00.000Z"
+                        }
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "cookieAuth": []
+          }
+        ]
+      }
+    },
+    "/score": {
+      "post": {
+        "tags": [
+          "score"
+        ],
+        "summary": "Calculate score",
+        "operationId": "calculateScore",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "portfolioId"
+                ],
+                "properties": {
+                  "portfolioId": {
+                    "type": "string",
+                    "format": "uuid"
+                  }
+                }
+              },
+              "examples": {
+                "valid": {
+                  "summary": "Calculate score",
+                  "value": {
+                    "portfolioId": "550e8400-e29b-41d4-a716-446655440002"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Score calculated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessResponse"
+                },
+                "examples": {
+                  "success": {
+                    "summary": "Score calculated",
+                    "value": {
+                      "success": true,
+                      "data": {
+                        "id": "550e8400-e29b-41d4-a716-446655440003",
+                        "portfolioId": "550e8400-e29b-41d4-a716-446655440002",
+                        "total": 85,
+                        "goalAlignment": 90,
+                        "assetAlloc": 80,
+                        "diversification": 85,
+                        "discipline": 88,
+                        "efficiency": 82,
+                        "tag": "OPTIMIZED",
+                        "insights": "Well-diversified portfolio with good goal alignment.",
+                        "createdAt": "2024-01-15T11:00:00.000Z",
+                        "updatedAt": "2024-01-15T11:00:00.000Z"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/ValidationError"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "cookieAuth": []
+          }
+        ]
+      }
+    },
+    "/score/portfolio/{portfolioId}": {
+      "get": {
+        "tags": [
+          "score"
+        ],
+        "summary": "Get scores for portfolio",
+        "operationId": "getPortfolioScores",
+        "parameters": [
+          {
+            "name": "portfolioId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Scores found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessResponse"
+                },
+                "examples": {
+                  "success": {
+                    "summary": "Portfolio scores",
+                    "value": {
+                      "success": true,
+                      "data": [
+                        {
+                          "id": "550e8400-e29b-41d4-a716-446655440003",
+                          "portfolioId": "550e8400-e29b-41d4-a716-446655440002",
+                          "total": 85,
+                          "goalAlignment": 90,
+                          "assetAlloc": 80,
+                          "diversification": 85,
+                          "discipline": 88,
+                          "efficiency": 82,
+                          "tag": "OPTIMIZED",
+                          "insights": "Well-diversified portfolio with good goal alignment.",
+                          "createdAt": "2024-01-15T11:00:00.000Z",
+                          "updatedAt": "2024-01-15T11:00:00.000Z"
+                        }
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "cookieAuth": []
+          }
+        ]
+      }
+    },
+    "/leads": {
+      "post": {
+        "tags": [
+          "leads"
+        ],
+        "summary": "Create lead",
+        "operationId": "createLead",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "name",
+                  "phone"
+                ],
+                "properties": {
+                  "name": {
+                    "type": "string"
+                  },
+                  "phone": {
+                    "type": "string"
+                  },
+                  "scoreId": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  "slot": {
+                    "type": "string",
+                    "format": "date-time"
+                  }
+                }
+              },
+              "examples": {
+                "valid": {
+                  "summary": "Create lead",
+                  "value": {
+                    "name": "Jane Smith",
+                    "phone": "+1-555-0456",
+                    "scoreId": "550e8400-e29b-41d4-a716-446655440003",
+                    "slot": "2024-01-20T14:00:00.000Z"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Lead created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessResponse"
+                },
+                "examples": {
+                  "success": {
+                    "summary": "Lead created",
+                    "value": {
+                      "success": true,
+                      "data": {
+                        "id": "550e8400-e29b-41d4-a716-446655440004",
+                        "userId": "550e8400-e29b-41d4-a716-446655440000",
+                        "name": "Jane Smith",
+                        "phone": "+1-555-0456",
+                        "scoreId": "550e8400-e29b-41d4-a716-446655440003",
+                        "slot": "2024-01-20T14:00:00.000Z",
+                        "status": "NEW",
+                        "createdAt": "2024-01-15T11:30:00.000Z",
+                        "updatedAt": "2024-01-15T11:30:00.000Z"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/ValidationError"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "cookieAuth": []
+          }
+        ]
+      },
+      "get": {
+        "tags": [
+          "leads"
+        ],
+        "summary": "List leads (admin)",
+        "operationId": "listLeads",
+        "parameters": [
+          {
+            "name": "status",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "NEW",
+                "CONTACTED",
+                "QUALIFIED",
+                "CLOSED"
+              ]
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "default": 1
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "default": 10
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "cursorId",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Paginated leads",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaginatedResponse"
+                },
+                "examples": {
+                  "success": {
+                    "summary": "Paginated leads",
+                    "value": {
+                      "success": true,
+                      "data": {
+                        "items": [
+                          {
+                            "id": "550e8400-e29b-41d4-a716-446655440004",
+                            "userId": "550e8400-e29b-41d4-a716-446655440000",
+                            "name": "Jane Smith",
+                            "phone": "+1-555-0456",
+                            "scoreId": "550e8400-e29b-41d4-a716-446655440003",
+                            "slot": "2024-01-20T14:00:00.000Z",
+                            "status": "NEW",
+                            "createdAt": "2024-01-15T11:30:00.000Z",
+                            "updatedAt": "2024-01-15T11:30:00.000Z",
+                            "user": {
+                              "id": "550e8400-e29b-41d4-a716-446655440000",
+                              "email": "john.doe@example.com"
+                            }
+                          }
+                        ],
+                        "total": 1,
+                        "page": 1,
+                        "nextCursor": "eyJpZCI6IjU1MGU4NDAwLWUyOWItNDFkNC1hNzE2LTQ0NjY1NTQ0MDAwNCJ9",
+                        "nextCursorId": "550e8400-e29b-41d4-a716-446655440004"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "cookieAuth": []
+          }
+        ]
+      }
+    },
+    "/leads/my-bookings": {
+      "get": {
+        "tags": [
+          "leads"
+        ],
+        "summary": "Get current user's bookings",
+        "operationId": "getMyBookings",
+        "responses": {
+          "200": {
+            "description": "User bookings",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessResponse"
+                },
+                "examples": {
+                  "success": {
+                    "summary": "User bookings",
+                    "value": {
+                      "success": true,
+                      "data": [
+                        {
+                          "id": "550e8400-e29b-41d4-a716-446655440007",
+                          "userId": "550e8400-e29b-41d4-a716-446655440000",
+                          "preferredSlot1": "2024-01-22T10:00:00.000Z",
+                          "preferredSlot2": "2024-01-22T14:00:00.000Z",
+                          "preferredSlot3": "2024-01-23T10:00:00.000Z",
+                          "confirmedSlot": "2024-01-22T10:00:00.000Z",
+                          "googleMeetLink": "https://meet.google.com/abc-defg-hij",
+                          "status": "CONFIRMED",
+                          "createdAt": "2024-01-15T11:35:00.000Z",
+                          "updatedAt": "2024-01-15T11:35:00.000Z"
+                        }
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "cookieAuth": []
+          }
+        ]
+      }
+    },
+    "/leads/availability": {
+      "get": {
+        "tags": [
+          "leads"
+        ],
+        "summary": "Get available slots",
+        "operationId": "getAvailability",
+        "responses": {
+          "200": {
+            "description": "Available slots"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "cookieAuth": []
+          }
+        ]
+      }
+    },
+    "/leads/book-session": {
+      "post": {
+        "tags": [
+          "leads"
+        ],
+        "summary": "Book advisory session (authenticated)",
+        "operationId": "bookSession",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "slot1",
+                  "slot2",
+                  "slot3"
+                ],
+                "properties": {
+                  "slot1": {
+                    "type": "string",
+                    "format": "date-time"
+                  },
+                  "slot2": {
+                    "type": "string",
+                    "format": "date-time"
+                  },
+                  "slot3": {
+                    "type": "string",
+                    "format": "date-time"
+                  }
+                }
+              },
+              "examples": {
+                "valid": {
+                  "summary": "Book advisory session",
+                  "value": {
+                    "slot1": "2024-01-22T10:00:00.000Z",
+                    "slot2": "2024-01-22T14:00:00.000Z",
+                    "slot3": "2024-01-23T10:00:00.000Z"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Session booked"
+          },
+          "400": {
+            "$ref": "#/components/responses/ValidationError"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "cookieAuth": []
+          }
+        ]
+      }
+    },
+    "/leads/book-session-public": {
+      "post": {
+        "tags": [
+          "leads"
+        ],
+        "summary": "Book advisory session (public)",
+        "operationId": "bookSessionPublic",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "name",
+                  "phone",
+                  "email",
+                  "slot1",
+                  "slot2",
+                  "slot3"
+                ],
+                "properties": {
+                  "name": {
+                    "type": "string"
+                  },
+                  "phone": {
+                    "type": "string"
+                  },
+                  "email": {
+                    "type": "string",
+                    "format": "email"
+                  },
+                  "slot1": {
+                    "type": "string",
+                    "format": "date-time"
+                  },
+                  "slot2": {
+                    "type": "string",
+                    "format": "date-time"
+                  },
+                  "slot3": {
+                    "type": "string",
+                    "format": "date-time"
+                  }
+                }
+              },
+              "examples": {
+                "valid": {
+                  "summary": "Public session booking",
+                  "value": {
+                    "name": "Alice Johnson",
+                    "phone": "+1-555-0789",
+                    "email": "alice@example.com",
+                    "slot1": "2024-01-22T10:00:00.000Z",
+                    "slot2": "2024-01-22T14:00:00.000Z",
+                    "slot3": "2024-01-23T10:00:00.000Z"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Session booked"
+          },
+          "400": {
+            "$ref": "#/components/responses/ValidationError"
+          }
+        }
+      }
+    },
+    "/leads/my-sessions": {
+      "get": {
+        "tags": [
+          "leads"
+        ],
+        "summary": "Get current user's advisory sessions",
+        "operationId": "getMySessions",
+        "responses": {
+          "200": {
+            "description": "User sessions",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessResponse"
+                },
+                "examples": {
+                  "success": {
+                    "summary": "User sessions",
+                    "value": {
+                      "success": true,
+                      "data": [
+                        {
+                          "id": "550e8400-e29b-41d4-a716-446655440007",
+                          "userId": "550e8400-e29b-41d4-a716-446655440000",
+                          "preferredSlot1": "2024-01-22T10:00:00.000Z",
+                          "preferredSlot2": "2024-01-22T14:00:00.000Z",
+                          "preferredSlot3": "2024-01-23T10:00:00.000Z",
+                          "confirmedSlot": "2024-01-22T10:00:00.000Z",
+                          "googleMeetLink": "https://meet.google.com/abc-defg-hij",
+                          "status": "CONFIRMED",
+                          "createdAt": "2024-01-15T11:35:00.000Z",
+                          "updatedAt": "2024-01-15T11:35:00.000Z"
+                        }
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "cookieAuth": []
+          }
+        ]
+      }
+    },
+    "/leads/{id}/status": {
+      "put": {
+        "tags": [
+          "leads"
+        ],
+        "summary": "Update lead status (admin)",
+        "operationId": "updateLeadStatus",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "status"
+                ],
+                "properties": {
+                  "status": {
+                    "type": "string",
+                    "enum": [
+                      "NEW",
+                      "CONTACTED",
+                      "QUALIFIED",
+                      "CLOSED"
+                    ]
+                  },
+                  "notes": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Lead updated"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "cookieAuth": []
+          }
+        ]
+      }
+    },
+    "/leads/admin/sessions": {
+      "get": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "List all advisory sessions (admin)",
+        "operationId": "adminListSessions",
+        "responses": {
+          "200": {
+            "description": "All sessions",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessResponse"
+                },
+                "examples": {
+                  "success": {
+                    "summary": "All sessions",
+                    "value": {
+                      "success": true,
+                      "data": [
+                        {
+                          "id": "550e8400-e29b-41d4-a716-446655440007",
+                          "userId": "550e8400-e29b-41d4-a716-446655440000",
+                          "user": {
+                            "id": "550e8400-e29b-41d4-a716-446655440000",
+                            "email": "john.doe@example.com",
+                            "name": "John Doe"
+                          },
+                          "preferredSlot1": "2024-01-22T10:00:00.000Z",
+                          "preferredSlot2": "2024-01-22T14:00:00.000Z",
+                          "preferredSlot3": "2024-01-23T10:00:00.000Z",
+                          "confirmedSlot": "2024-01-22T10:00:00.000Z",
+                          "googleMeetLink": "https://meet.google.com/abc-defg-hij",
+                          "status": "CONFIRMED",
+                          "createdAt": "2024-01-15T11:35:00.000Z",
+                          "updatedAt": "2024-01-15T11:35:00.000Z"
+                        }
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "cookieAuth": []
+          }
+        ]
+      }
+    },
+    "/leads/admin/sessions/{id}/confirm": {
+      "post": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "Confirm advisory session (admin)",
+        "operationId": "adminConfirmSession",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "confirmedSlot",
+                  "googleMeetLink"
+                ],
+                "properties": {
+                  "confirmedSlot": {
+                    "type": "string",
+                    "format": "date-time"
+                  },
+                  "googleMeetLink": {
+                    "type": "string",
+                    "format": "uri"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Session confirmed"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "cookieAuth": []
+          }
+        ]
+      }
+    },
+    "/leads/admin/sessions/{id}/notes": {
+      "post": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "Update session notes (admin)",
+        "operationId": "adminUpdateSessionNotes",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "notes": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Notes updated"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "cookieAuth": []
+          }
+        ]
+      }
+    },
+    "/leads/admin/sessions/{id}/refund": {
+      "post": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "Refund/cancel session (admin)",
+        "operationId": "adminRefundSession",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Session refunded"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "cookieAuth": []
+          }
+        ]
+      }
+    },
+    "/leads/admin/sessions/{id}": {
+      "delete": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "Delete session (admin)",
+        "operationId": "adminDeleteSession",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Session deleted"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "cookieAuth": []
+          }
+        ]
+      }
+    },
+    "/admin/users": {
+      "get": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "List users with pagination",
+        "operationId": "adminListUsers",
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "default": 1
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "default": 20
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Paginated users",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaginatedResponse"
+                },
+                "examples": {
+                  "success": {
+                    "summary": "Paginated users",
+                    "value": {
+                      "success": true,
+                      "data": {
+                        "items": [
+                          {
+                            "id": "550e8400-e29b-41d4-a716-446655440000",
+                            "email": "john.doe@example.com",
+                            "name": "John Doe",
+                            "role": "USER",
+                            "createdAt": "2024-01-10T08:00:00.000Z",
+                            "_count": {
+                              "leads": 2,
+                              "portfolios": 1
+                            }
+                          }
+                        ],
+                        "total": 1,
+                        "page": 1
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "cookieAuth": []
+          }
+        ]
+      }
+    },
+    "/admin/leads": {
+      "get": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "List leads with counts (admin)",
+        "operationId": "adminListLeads",
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "default": 1
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "default": 20
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Leads with counts",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessResponse"
+                },
+                "examples": {
+                  "success": {
+                    "summary": "Admin leads with counts",
+                    "value": {
+                      "success": true,
+                      "data": [
+                        {
+                          "id": "550e8400-e29b-41d4-a716-446655440004",
+                          "userId": "550e8400-e29b-41d4-a716-446655440000",
+                          "user": {
+                            "id": "550e8400-e29b-41d4-a716-446655440000",
+                            "email": "john.doe@example.com",
+                            "name": "John Doe"
+                          },
+                          "name": "Jane Smith",
+                          "phone": "+1-555-0456",
+                          "scoreId": "550e8400-e29b-41d4-a716-446655440003",
+                          "slot": "2024-01-20T14:00:00.000Z",
+                          "status": "NEW",
+                          "createdAt": "2024-01-15T11:30:00.000Z",
+                          "updatedAt": "2024-01-15T11:30:00.000Z"
+                        }
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "cookieAuth": []
+          }
+        ]
+      }
+    },
+    "/admin/existing-clients": {
+      "get": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "List existing clients (admin)",
+        "operationId": "adminListExistingClients",
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "default": 1
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "default": 20
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Existing clients",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessResponse"
+                },
+                "examples": {
+                  "success": {
+                    "summary": "Existing clients",
+                    "value": {
+                      "success": true,
+                      "data": [
+                        {
+                          "id": "550e8400-e29b-41d4-a716-446655440008",
+                          "name": "Existing Client",
+                          "pan": "ABCDE1234F",
+                          "email": "client@example.com",
+                          "mobile": "+1-555-1111",
+                          "city": "Mumbai",
+                          "aum": 5000000,
+                          "purchaseValue": 4500000,
+                          "createdAt": "2024-01-10T09:00:00.000Z",
+                          "updatedAt": "2024-01-10T09:00:00.000Z",
+                          "folios": [
+                            {
+                              "id": "550e8400-e29b-41d4-a716-446655440009",
+                              "clientName": "Existing Client",
+                              "clientPan": "ABCDE1234F",
+                              "email": "client@example.com",
+                              "mobile": "+1-555-1111",
+                              "folioNumber": "1234567890",
+                              "schemeName": "HDFC Equity Fund",
+                              "aum": 2500000,
+                              "purchaseValue": 2250000,
+                              "createdAt": "2024-01-10T09:05:00.000Z",
+                              "updatedAt": "2024-01-10T09:05:00.000Z"
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "cookieAuth": []
+          }
+        ]
+      }
+    },
+    "/admin/portfolio-upload": {
+      "post": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "Upload portfolio Excel file",
+        "operationId": "adminUploadPortfolio",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "file": {
+                    "type": "string",
+                    "format": "binary"
+                  }
+                },
+                "required": [
+                  "file"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "File uploaded"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "cookieAuth": []
+          }
+        ]
+      }
+    },
+    "/admin/sync-folios": {
+      "post": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "Sync folios from upload",
+        "operationId": "adminSyncFolios",
+        "responses": {
+          "200": {
+            "description": "Folios synced"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "cookieAuth": []
+          }
+        ]
+      }
+    },
+    "/chat": {
+      "post": {
+        "tags": [
+          "chat"
+        ],
+        "summary": "Send message to AI assistant",
+        "operationId": "chatMessage",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "message"
+                ],
+                "properties": {
+                  "message": {
+                    "type": "string"
+                  },
+                  "context": {
+                    "type": "string"
+                  }
+                }
+              },
+              "examples": {
+                "valid": {
+                  "summary": "Chat message",
+                  "value": {
+                    "message": "What is the best mutual fund for long-term investment?",
+                    "context": "User is 30 years old, moderate risk appetite"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "AI response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessResponse"
+                },
+                "examples": {
+                  "success": {
+                    "summary": "AI response",
+                    "value": {
+                      "success": true,
+                      "data": {
+                        "response": "For long-term investment with moderate risk, consider diversified equity funds...",
+                        "suggestions": [
+                          "HDFC Flexi Cap Fund",
+                          "Parag Parikh Flexi Cap Fund",
+                          "UTI Nifty 50 Index Fund"
+                        ]
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/ValidationError"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "cookieAuth": []
+          }
+        ]
+      }
+    },
+    "/contact": {
+      "post": {
+        "tags": [
+          "contact"
+        ],
+        "summary": "Submit contact form",
+        "operationId": "submitContact",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "name",
+                  "email",
+                  "message"
+                ],
+                "properties": {
+                  "name": {
+                    "type": "string"
+                  },
+                  "email": {
+                    "type": "string",
+                    "format": "email"
+                  },
+                  "phone": {
+                    "type": "string"
+                  },
+                  "subject": {
+                    "type": "string"
+                  },
+                  "message": {
+                    "type": "string"
+                  }
+                }
+              },
+              "examples": {
+                "valid": {
+                  "summary": "Contact form submission",
+                  "value": {
+                    "name": "Bob Wilson",
+                    "email": "bob@example.com",
+                    "phone": "+1-555-0999",
+                    "subject": "Investment Inquiry",
+                    "message": "I would like to know more about your wealth management services."
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Contact submitted",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessResponse"
+                },
+                "examples": {
+                  "success": {
+                    "summary": "Contact submitted",
+                    "value": {
+                      "success": true,
+                      "data": {
+                        "id": "550e8400-e29b-41d4-a716-446655440005",
+                        "name": "Bob Wilson",
+                        "email": "bob@example.com",
+                        "subject": "Investment Inquiry",
+                        "createdAt": "2024-01-15T12:00:00.000Z"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/ValidationError"
+          }
+        }
+      }
+    },
+    "/support": {
+      "post": {
+        "tags": [
+          "support"
+        ],
+        "summary": "Submit support query",
+        "operationId": "submitSupport",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "subject",
+                  "message"
+                ],
+                "properties": {
+                  "subject": {
+                    "type": "string"
+                  },
+                  "message": {
+                    "type": "string"
+                  },
+                  "priority": {
+                    "type": "string",
+                    "enum": [
+                      "LOW",
+                      "MEDIUM",
+                      "HIGH",
+                      "URGENT"
+                    ]
+                  }
+                }
+              },
+              "examples": {
+                "valid": {
+                  "summary": "Submit support query",
+                  "value": {
+                    "subject": "Unable to access portfolio",
+                    "message": "I cannot view my portfolio dashboard after login.",
+                    "priority": "HIGH"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Support query submitted",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessResponse"
+                },
+                "examples": {
+                  "success": {
+                    "summary": "Support query submitted",
+                    "value": {
+                      "success": true,
+                      "data": {
+                        "id": "550e8400-e29b-41d4-a716-446655440006",
+                        "userId": "550e8400-e29b-41d4-a716-446655440000",
+                        "subject": "Unable to access portfolio",
+                        "message": "I cannot view my portfolio dashboard after login.",
+                        "priority": "HIGH",
+                        "status": "OPEN",
+                        "createdAt": "2024-01-15T12:00:00.000Z",
+                        "updatedAt": "2024-01-15T12:00:00.000Z"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/ValidationError"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "cookieAuth": []
+          }
+        ]
+      },
+      "get": {
+        "tags": [
+          "support"
+        ],
+        "summary": "List user's support queries",
+        "operationId": "listSupportQueries",
+        "responses": {
+          "200": {
+            "description": "Support queries",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessResponse"
+                },
+                "examples": {
+                  "success": {
+                    "summary": "User support queries",
+                    "value": {
+                      "success": true,
+                      "data": [
+                        {
+                          "id": "550e8400-e29b-41d4-a716-446655440006",
+                          "userId": "550e8400-e29b-41d4-a716-446655440000",
+                          "subject": "Unable to access portfolio",
+                          "message": "I cannot view my portfolio dashboard after login.",
+                          "priority": "HIGH",
+                          "status": "OPEN",
+                          "createdAt": "2024-01-15T12:00:00.000Z",
+                          "updatedAt": "2024-01-15T12:00:00.000Z"
+                        }
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "cookieAuth": []
+          }
+        ]
+      }
+    }
+  }
+}
