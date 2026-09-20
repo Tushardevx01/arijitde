@@ -87,6 +87,8 @@ For uploads: Add a disk at `/backend/uploads` (1 GB minimum)
 
 Click "Create Web Service" and wait for deployment.
 
+> **Note**: Build command runs `npm install && npx prisma generate && npm run build`. Prisma 7.10.0 is now used (updated from 7.8.0).
+
 ### 5. Verify
 
 ```bash
@@ -282,7 +284,7 @@ DATABASE_URL="..." npx prisma migrate deploy
 ### Scheduled Tasks
 
 - **Daily**: Neon automated backups
-- **Weekly**: Dependency updates (`npm audit fix`)
+- **Weekly**: Dependency updates (`npm audit fix`) — **Frontend now clean, Backend has 5 high (Prisma 6.x / nodemailer 10.x deferred)**
 - **Monthly**: Rotate JWT/OTP secrets
 - **Quarterly**: Review and rotate all API keys
 
@@ -341,4 +343,5 @@ vercel logs finanalysis-site
 - [ ] Security headers (Helmet)
 - [ ] Database backups enabled
 - [ ] Secrets rotated quarterly
-- [ ] Dependency audit clean (`npm audit`)
+- [ ] Dependency audit clean (`npm audit`) — **Frontend: ✅ 0 vulns, Backend: 5 high (breaking changes required)**
+- [ ] **Supply chain: xlsx from npm (not CDN)** — verified `package-lock.json` integrity

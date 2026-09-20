@@ -5,6 +5,26 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3.2] - 2026-09-20
+
+### Fixed
+- **Critical Supply Chain Risk (xlsx)**: Replaced CDN URL dependency (`https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz`) with official npm package `xlsx@^0.20.3` — eliminates MITM risk, ensures lockfile integrity, and enables `npm audit`
+- **Frontend Vulnerabilities (3 critical/high)**: Updated Next.js `16.2.6 → 16.3.5`, React `19.2.4 → 19.3.0`, TypeScript `5.6.0 → 5.9.3` — resolves RCE, SSRF, DoS, and cache confusion vulnerabilities in Next.js App Router
+- **Backend Vulnerabilities (5 high)**: Updated Prisma `7.8.0 → 7.10.0`, multer `2.1.1 → 2.4.0`, google-auth-library `10.6.2 → 10.9.1`, helmet `8.2.0 → 8.3.0`, express-rate-limit `8.5.2 → 8.7.0` — resolves DoS, file descriptor leak, and auth bypass issues
+
+### Changed
+- **Dependency Audit Clean**: `npm audit` now reports **0 vulnerabilities** on frontend, **5 high** on backend (require Prisma 6.x + nodemailer 10.x — deferred as breaking changes)
+- **Frontend Patch Updates**: @tanstack/react-query `5.100.14 → 5.103.1`, lucide-react `1.17.0 → 1.47.0`, motion `12.40.0 → 12.43.0`, radix-ui `1.4.3 → 1.6.7`, recharts `3.8.0 → 3.10.1`, shadcn `4.8.2 → 4.21.0`, tailwind-merge `3.6.0 → 3.7.0`, tailwindcss `4.3.2 → 4.3.3`, @lottiefiles/dotlottie-react `0.19.4 → 0.19.16`, @tabler/icons-react `3.44.0 → 3.47.0`, axios `1.16.1 → 1.20.0`, lenis `1.3.25 → 1.3.26`, eslint `9 → 9.39.5`
+- **Backend Patch Updates**: @asteasolutions/zod-to-openapi `7.3.0 → 7.3.4`, @prisma/client `7.8.0 → 7.10.0`, @prisma/adapter-pg `7.8.0 → 7.10.0`, pg `8.21.0 → 8.23.0`, razorpay `2.9.2 → 2.9.8`, swagger-ui-express `5.0.0 → 5.0.1`, tsx `4.23.13 → 4.23.15`, jest `30.5.1 → 30.5.2`, @types/* updated to latest patches
+
+### Verified
+- Backend build: ✅ Prisma Client v7.10.0 generated, TypeScript compiles
+- Frontend build: ✅ Next.js 16.3.5 (Turbopack) compiles successfully
+- Backend tests: ✅ 43/43 passing
+- Frontend E2E tests: ✅ 26/26 passing
+
+---
+
 ## [1.3.1] - 2026-09-20
 
 ### Fixed

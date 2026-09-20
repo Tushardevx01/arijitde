@@ -23,13 +23,13 @@ A comprehensive financial analysis platform built with Next.js 16, Express 5, Pr
 
 | Layer | Technology | Version |
 |-------|------------|---------|
-| Frontend | Next.js | 16.2.6 |
+| Frontend | Next.js | 16.3.5 |
 | Backend | Express | 5.2.1 |
 | Database | PostgreSQL | 16 (Neon) |
-| ORM | Prisma | 7.8.0 |
+| ORM | Prisma | 7.10.0 |
 | Cache | Upstash Redis | - |
 | Auth | JWT + Google OAuth | - |
-| Testing | Jest + React Query | - |
+| Testing | Jest + React Query + Playwright | - |
 
 ## Project Structure
 
